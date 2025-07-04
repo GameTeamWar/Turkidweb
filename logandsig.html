@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Turkid Restaurant - Lezzetin Adresi</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #f97316 0%, #ef4444 50%, #ec4899 100%);
+            background-attachment: fixed;
+            background-size: 400% 400%;
+            animation: gradientMove 8s ease infinite;
+        }
+
+        @keyframes gradientMove {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        .flex {
+            display: flex;
+        }
+
+        .flex-col {
+            flex-direction: column;
+        }
+
+        .items-center {
+            align-items: center;
+        }
+
+        .justify-center {
+            justify-content: center;
+        }
+
+        .justify-between {
+            justify-content: space-between;
+        }
+
+        .space-x-2 > * + * {
+            margin-left: 0.5rem;
+        }
+
+        .space-x-4 > * + * {
+            margin-left: 1rem;
+        }
+
+        .space-x-8 > * + * {
+            margin-left: 2rem;
+        }
+
+        .space-y-4 > * + * {
+            margin-top: 1rem;
+        }
+
+        .space-y-6 > * + * {
+            margin-top: 1.5rem;
+        }
+
+        .text-white {
+            color: white;
+        }
+
+        .text-orange-500 {
+            color: #f97316;
+        }
+
+        .text-orange-200 {
+            color: #fed7aa;
+        }
+
+        .text-sm {
+            font-size: 0.875rem;
+        }
+
+        .text-lg {
+            font-size: 1.125rem;
+        }
+
+        .text-2xl {
+            font-size: 1.5rem;
+        }
+
+        .text-3xl {
+            font-size: 1.875rem;
+        }
+
+        .text-4xl {
+            font-size: 2.25rem;
+        }
+
+        .font-medium {
+            font-weight: 500;
+        }
+
+        .font-semibold {
+            font-weight: 600;
+        }
+
+        .font-bold {
+            font-weight: 700;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .py-2 {
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
+        }
+
+        .py-3 {
+            padding-top: 0.75rem;
+            padding-bottom: 0.75rem;
+        }
+
+        .py-6 {
+            padding-top: 1.5rem;
+            padding-bottom: 1.5rem;
+        }
+
+        .py-8 {
+            padding-top: 2rem;
+            padding-bottom: 2rem;
+        }
+
+        .px-4 {
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+
+        .px-8 {
+            padding-left: 2rem;
+            padding-right: 2rem;
+        }
+
+        .p-1 {
+            padding: 0.25rem;
+        }
+
+        .p-8 {
+            padding: 2rem;
+        }
+
+        .mb-2 {
+            margin-bottom: 0.5rem;
+        }
+
+        .mb-4 {
+            margin-bottom: 1rem;
+        }
+
+        .mb-6 {
+            margin-bottom: 1.5rem;
+        }
+
+        .mb-8 {
+            margin-bottom: 2rem;
+        }
+
+        .mt-6 {
+            margin-top: 1.5rem;
+        }
+
+        .mr-2 {
+            margin-right: 0.5rem;
+        }
+
+        .w-5 {
+            width: 1.25rem;
+        }
+
+        .w-6 {
+            width: 1.5rem;
+        }
+
+        .w-12 {
+            width: 3rem;
+        }
+
+        .w-full {
+            width: 100%;
+        }
+
+        .h-5 {
+            height: 1.25rem;
+        }
+
+        .h-6 {
+            height: 1.5rem;
+        }
+
+        .h-12 {
+            height: 3rem;
+        }
+
+        .max-w-md {
+            max-width: 28rem;
+        }
+
+        .bg-white {
+            background-color: white;
+        }
+
+        .bg-orange-50 {
+            background-color: #fff7ed;
+        }
+
+        .rounded-full {
+            border-radius: 9999px;
+        }
+
+        .rounded-lg {
+            border-radius: 0.5rem;
+        }
+
+        .rounded-md {
+            border-radius: 0.375rem;
+        }
+
+        .rounded-2xl {
+            border-radius: 1rem;
+        }
+
+        .shadow-lg {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        .shadow-2xl {
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+
+        .relative {
+            position: relative;
+        }
+
+        .z-10 {
+            z-index: 10;
+        }
+
+        .block {
+            display: block;
+        }
+
+        .inline {
+            display: inline;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .flex-1 {
+            flex: 1 1 0%;
+        }
+
+        .border {
+            border-width: 1px;
+        }
+
+        .border-white {
+            border-color: white;
+        }
+
+        .focus\:outline-none:focus {
+            outline: 2px solid transparent;
+            outline-offset: 2px;
+        }
+
+        .focus\:ring-2:focus {
+            --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+            --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+            box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+        }
+
+        .focus\:ring-white:focus {
+            --tw-ring-color: white;
+        }
+
+        .focus\:border-transparent:focus {
+            border-color: transparent;
+        }
+
+        .transition-colors {
+            transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+            transition-duration: 150ms;
+        }
+
+        .transition-all {
+            transition-property: all;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+            transition-duration: 150ms;
+        }
+
+        .hover\:text-orange-200:hover {
+            color: #fed7aa;
+        }
+
+        .hover\:bg-orange-50:hover {
+            background-color: #fff7ed;
+        }
+
+        .hover\:bg-white-10:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .hover\:bg-white-30:hover {
+            background-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .cursor-pointer {
+            cursor: pointer;
+        }
+
+        /* Custom Styles */
+        .glass-effect {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .auth-form {
+            transform: translateY(20px);
+            opacity: 0;
+            animation: slideUp 0.6s ease-out forwards;
+        }
+
+        @keyframes slideUp {
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .form-switch {
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .nav-link {
+            color: white;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .nav-link:hover {
+            color: #fed7aa;
+        }
+
+        .logo-icon {
+            width: 48px;
+            height: 48px;
+            background-color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .auth-input {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            font-size: 14px;
+        }
+
+        .auth-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .auth-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5);
+            border-color: transparent;
+        }
+
+        .auth-button {
+            width: 100%;
+            background-color: white;
+            color: #f97316;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .auth-button:hover {
+            background-color: #fff7ed;
+        }
+
+        .toggle-button {
+            flex: 1;
+            padding: 8px 16px;
+            border-radius: 6px;
+            color: white;
+            font-weight: 500;
+            background: none;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .toggle-button.active {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .toggle-button:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .social-button {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .social-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            color: white;
+            font-size: 14px;
+        }
+
+        .text-link {
+            color: white;
+            font-size: 14px;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        .text-link:hover {
+            color: #fed7aa;
+        }
+
+        .form-container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 1rem;
+            margin-bottom: 6px;
+            backdrop-filter: blur(10px);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-desktop {
+                display: none;
+            }
+            
+            .container {
+                padding: 0 1rem;
+            }
+        }
+
+        @media (min-width: 769px) {
+            .nav-mobile {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <header class="relative z-10 py-6">
+        <div class="container">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <div class="logo-icon">
+                        <span style="font-size: 24px;">🍽️</span>
+                    </div>
+                    <h1 class="text-3xl font-bold text-white">Turkid</h1>
+                </div>
+                <nav class="nav-desktop flex space-x-8">
+                    <a href="#" class="nav-link">Ana Sayfa</a>
+                    <a href="#" class="nav-link">Menü</a>
+                    <a href="#" class="nav-link">Hakkımızda</a>
+                    <a href="#" class="nav-link">İletişim</a>
+                </nav>
+                <div class="nav-mobile">
+                    <button class="text-white">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex flex-col items-center justify-center px-4 py-8" style="min-height: calc(100vh - 200px);">
+        <div class="max-w-md w-full">
+            <!-- Auth Toggle -->
+            <div class="text-center mb-8">
+                <h2 class="text-4xl font-bold text-white mb-2">Hoş Geldiniz!</h2>
+                <p class="text-white" style="opacity: 0.8;">Lezzetin keşfedildiği yer</p>
+            </div>
+
+            <!-- Auth Form Container -->
+            <div class="glass-effect rounded-2xl p-8 shadow-2xl auth-form">
+                <!-- Form Toggle Buttons -->
+                <div class="form-container mb-6">
+                    <button id="loginBtn" class="toggle-button active">
+                        Giriş Yap
+                    </button>
+                    <button id="registerBtn" class="toggle-button">
+                        Kayıt Ol
+                    </button>
+                </div>
+
+                <!-- Login Form -->
+                <form id="loginForm" class="space-y-4 form-switch">
+                    <div>
+                        <label class="block text-white text-sm font-medium mb-2">E-posta</label>
+                        <input type="email" class="auth-input" placeholder="ornek@email.com">
+                    </div>
+                    <div>
+                        <label class="block text-white text-sm font-medium mb-2">Şifre</label>
+                        <input type="password" class="auth-input" placeholder="••••••••">
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <label class="checkbox-label">
+                            <input type="checkbox" class="mr-2">
+                            Beni Hatırla
+                        </label>
+                        <a href="#" id="forgotPasswordBtn" class="text-link">
+                            Şifremi Unuttum
+                        </a>
+                    </div>
+                    <button type="submit" class="auth-button">
+                        Giriş Yap
+                    </button>
+                </form>
+
+                <!-- Register Form -->
+                <form id="registerForm" class="space-y-4 form-switch hidden">
+                    <div>
+                        <label class="block text-white text-sm font-medium mb-2">Ad Soyad</label>
+                        <input type="text" class="auth-input" placeholder="Adınız Soyadınız">
+                    </div>
+                    <div>
+                        <label class="block text-white text-sm font-medium mb-2">E-posta</label>
+                        <input type="email" class="auth-input" placeholder="ornek@email.com">
+                    </div>
+                    <div>
+                        <label class="block text-white text-sm font-medium mb-2">Şifre</label>
+                        <input type="password" class="auth-input" placeholder="••••••••">
+                    </div>
+                    <div>
+                        <label class="block text-white text-sm font-medium mb-2">Şifre Tekrar</label>
+                        <input type="password" class="auth-input" placeholder="••••••••">
+                    </div>
+                    <button type="submit" class="auth-button">
+                        Kayıt Ol
+                    </button>
+                </form>
+
+                <!-- Forgot Password Form -->
+                <form id="forgotPasswordForm" class="space-y-4 form-switch hidden">
+                    <div class="text-center mb-4">
+                        <h3 class="text-white text-lg font-semibold mb-2">Şifremi Unuttum</h3>
+                        <p class="text-white text-sm" style="opacity: 0.8;">E-posta adresinize şifre sıfırlama linki göndereceğiz</p>
+                    </div>
+                    <div>
+                        <label class="block text-white text-sm font-medium mb-2">E-posta</label>
+                        <input type="email" class="auth-input" placeholder="ornek@email.com">
+                    </div>
+                    <button type="submit" class="auth-button">
+                        Şifre Sıfırlama Linki Gönder
+                    </button>
+                    <a href="#" id="backToLoginBtn" class="text-link w-full text-center block">
+                        ← Giriş sayfasına dön
+                    </a>
+                </form>
+            </div>
+
+            <!-- Social Login -->
+            <div class="mt-6 text-center">
+                <p class="text-white text-sm mb-4" style="opacity: 0.8;">veya</p>
+                <div class="flex space-x-4">
+                    <button class="social-button">
+                        <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        </svg>
+                        Google
+                    </button>
+                    <button class="social-button">
+                        <svg class="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                        </svg>
+                        Facebook
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center py-6 text-white" style="opacity: 0.6;">
+        <p>&copy; 2024 Turkid Restaurant. Tüm hakları saklıdır.</p>
+    </footer>
+
+    <script>
+        // Form switching functionality
+        const loginBtn = document.getElementById('loginBtn');
+        const registerBtn = document.getElementById('registerBtn');
+        const forgotPasswordBtn = document.getElementById('forgotPasswordBtn');
+        const backToLoginBtn = document.getElementById('backToLoginBtn');
+        
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+        const forgotPasswordForm = document.getElementById('forgotPasswordForm');
+
+        function switchForm(activeForm, activeBtn) {
+            // Hide all forms
+            [loginForm, registerForm, forgotPasswordForm].forEach(form => {
+                form.classList.add('hidden');
+            });
+            
+            // Reset button styles
+            [loginBtn, registerBtn].forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Show active form
+            activeForm.classList.remove('hidden');
+            
+            // Style active button
+            if (activeBtn) {
+                activeBtn.classList.add('active');
+            }
+        }
+
+        loginBtn.addEventListener('click', () => switchForm(loginForm, loginBtn));
+        registerBtn.addEventListener('click', () => switchForm(registerForm, registerBtn));
+        forgotPasswordBtn.addEventListener('click', () => switchForm(forgotPasswordForm));
+        backToLoginBtn.addEventListener('click', () => switchForm(loginForm, loginBtn));
+
+        // Form submissions
+        loginForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            alert('Giriş yapılıyor... (Bu demo amaçlıdır)');
+        });
+
+        registerForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            alert('Kayıt oluşturuluyor... (Bu demo amaçlıdır)');
+        });
+
+        forgotPasswordForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            alert('Şifre sıfırlama linki gönderildi! (Bu demo amaçlıdır)');
+        });
+    </script>
+</body>
+</html>
