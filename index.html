@@ -66,22 +66,47 @@
                     <span class="text-xl font-bold text-white">Turkid</span>
                 </div>
                 
-                <!-- Profile Menu - Sağ -->
-                <div class="flex items-center gap-4">
-                    <!-- Order Process Buttons -->
-                    <button class="bg-white/30 text-black group-hover:text-white px-6 py-2 rounded-full font-semibold hover:bg-white/50 transition-all duration-300 relative overflow-hidden group">
-                        <!-- Slide Background -->
-                        <div class="absolute inset-0 bg-red-500 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-out rounded-full"></div>
-                        <span class="relative z-10 transition-colors duration-300">sipariş</span>
-                    </button>
-                    <button class="bg-white/30 text-black group-hover:text-white px-6 py-2 rounded-full font-semibold hover:bg-white/50 transition-all duration-300 relative overflow-hidden group">
-                        <!-- Slide Background -->
-                        <div class="absolute inset-0 bg-red-500 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-out rounded-full"></div>
-                        <span class="relative z-10 transition-colors duration-300">sepet</span>
+                <!-- Progress Indicator - Orta -->
+                <div class="flex items-center gap-4 md:gap-8">
+                    <!-- Step 1: sipariş -->
+                    <button id="step1" onclick="showStep('order')" class="flex flex-col items-center cursor-pointer group">
+                        <div class="w-10 h-10 md:w-12 md:h-12 bg-white rounded-full flex items-center justify-center mb-1 md:mb-2 shadow-lg transition-all duration-300 group-hover:scale-110">
+                            <span class="text-orange-500 font-bold text-sm md:text-base">1</span>
+                        </div>
+                        <span class="text-white text-xs md:text-sm font-medium">sipariş</span>
                     </button>
                     
+                    <!-- Connector Line -->
+                    <div class="w-12 md:w-24 h-1 bg-white/50 rounded-full">
+                        <div id="progress1" class="w-0 h-full bg-white rounded-full transition-all duration-500"></div>
+                    </div>
+                    
+                    <!-- Step 2: sepet -->
+                    <button id="step2" onclick="showStep('cart')" class="flex flex-col items-center cursor-pointer group">
+                        <div class="w-10 h-10 md:w-12 md:h-12 bg-white/30 rounded-full flex items-center justify-center mb-1 md:mb-2 transition-all duration-300 group-hover:scale-110">
+                            <span class="text-white font-bold text-sm md:text-base">2</span>
+                        </div>
+                        <span class="text-white text-xs md:text-sm font-medium">sepet</span>
+                    </button>
+                    
+                    <!-- Connector Line -->
+                    <div class="w-12 md:w-24 h-1 bg-white/30 rounded-full">
+                        <div id="progress2" class="w-0 h-full bg-white rounded-full transition-all duration-500"></div>
+                    </div>
+                    
+                    <!-- Step 3: ödeme -->
+                    <button id="step3" onclick="showStep('payment')" class="flex flex-col items-center cursor-pointer group">
+                        <div class="w-10 h-10 md:w-12 md:h-12 bg-white/30 rounded-full flex items-center justify-center mb-1 md:mb-2 transition-all duration-300 group-hover:scale-110">
+                            <span class="text-white font-bold text-sm md:text-base">3</span>
+                        </div>
+                        <span class="text-white text-xs md:text-sm font-medium">ödeme</span>
+                    </button>
+                </div>
+                
+                <!-- Profile Menu - Sağ -->
+                <div class="flex items-center gap-4">
                     <!-- Profile Menu -->
-                                            <div class="relative">
+                    <div class="relative">
                         <button id="profileButton" class="flex items-center gap-2 bg-white/30 border border-white/40 rounded-full px-4 py-2 hover:bg-white/50 transition-all duration-300 hover:-translate-y-0.5 relative overflow-hidden group">
                             <!-- Slide Background -->
                             <div class="absolute inset-0 bg-red-500 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-300 ease-out rounded-full"></div>
@@ -218,58 +243,154 @@
 
         <!-- Content Area -->
         <main class="flex-1 pt-2 px-6 pb-6 bg-white/5">
-            <!-- Progress Indicator -->
-            <div class="flex items-center justify-center mb-8">
-                <div class="flex items-center gap-8">
-                    <!-- Step 1: sipariş -->
-                    <div class="flex flex-col items-center">
-                        <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center mb-2 shadow-lg">
-                            <span class="text-orange-500 font-bold">1</span>
+            <!-- Order Step -->
+            <div id="orderStep" class="animate-fade-in">
+                <div class="mb-8">
+                    <h1 id="categoryTitle" class="text-white text-3xl font-bold">Popüler Ürünler</h1>
+                </div>
+
+                <!-- Product Grid -->
+                <div id="productGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    <!-- Products will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Cart Step -->
+            <div id="cartStep" class="hidden animate-fade-in">
+                <div class="mb-8">
+                    <h1 class="text-white text-3xl font-bold">Sepetim</h1>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2">
+                        <div id="cartItems" class="space-y-4">
+                            <!-- Cart items will be populated by JavaScript -->
                         </div>
-                        <span class="text-white text-sm font-medium">sipariş</span>
                     </div>
                     
-                    <!-- Connector Line -->
-                    <div class="w-24 h-1 bg-white/50 rounded-full">
-                        <div class="w-1/3 h-full bg-white rounded-full"></div>
-                    </div>
-                    
-                    <!-- Step 2: sepet -->
-                    <div class="flex flex-col items-center">
-                        <div class="w-12 h-12 bg-white/30 rounded-full flex items-center justify-center mb-2">
-                            <span class="text-white font-bold">2</span>
+                    <div class="lg:col-span-1">
+                        <div class="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6 sticky top-24">
+                            <h3 class="text-white text-xl font-semibold mb-4">Sipariş Özeti</h3>
+                            
+                            <div class="space-y-3 mb-6">
+                                <div class="flex justify-between text-white/80">
+                                    <span>Ara Toplam:</span>
+                                    <span id="cartSubtotal">0.00 ₺</span>
+                                </div>
+                                <div class="flex justify-between text-white/80">
+                                    <span>KDV (%8):</span>
+                                    <span id="cartTax">0.00 ₺</span>
+                                </div>
+                                <div class="h-px bg-white/20"></div>
+                                <div class="flex justify-between text-white text-lg font-semibold">
+                                    <span>Toplam:</span>
+                                    <span id="cartTotal">0.00 ₺</span>
+                                </div>
+                            </div>
+                            
+                            <div class="flex flex-col gap-3">
+                                <button onclick="clearCartItems()" class="w-full bg-white/20 text-white py-3 px-4 rounded-lg font-semibold hover:bg-white/30 transition-colors duration-300">
+                                    Sepeti Temizle
+                                </button>
+                                <button onclick="showStep('payment')" class="w-full bg-orange-500 text-white py-3 px-4 rounded-lg font-semibold hover:bg-orange-600 transition-all duration-300 hover:-translate-y-0.5">
+                                    Ödemeye Geç
+                                </button>
+                            </div>
                         </div>
-                        <span class="text-white text-sm font-medium">sepet</span>
-                    </div>
-                    
-                    <!-- Connector Line -->
-                    <div class="w-24 h-1 bg-white/30 rounded-full"></div>
-                    
-                    <!-- Step 3: ödeme -->
-                    <div class="flex flex-col items-center">
-                        <div class="w-12 h-12 bg-white/30 rounded-full flex items-center justify-center mb-2">
-                            <span class="text-white font-bold">3</span>
-                        </div>
-                        <span class="text-white text-sm font-medium">ödeme</span>
                     </div>
                 </div>
             </div>
 
-            <div class="mb-8">
-                <h1 id="categoryTitle" class="text-white text-3xl font-bold">Popüler Ürünler</h1>
-            </div>
+            <!-- Payment Step -->
+            <div id="paymentStep" class="hidden animate-fade-in">
+                <div class="mb-8">
+                    <h1 class="text-white text-3xl font-bold">Ödeme</h1>
+                </div>
 
-            <!-- Product Grid -->
-            <div id="productGrid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                <!-- Products will be populated by JavaScript -->
-            </div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 space-y-6">
+                        <!-- Payment Method -->
+                        <div class="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6">
+                            <h3 class="text-white text-xl font-semibold mb-4">Ödeme Yöntemi</h3>
+                            
+                            <div class="space-y-3">
+                                <label class="flex items-center gap-3 p-4 bg-white/10 rounded-lg cursor-pointer hover:bg-white/20 transition-colors duration-300">
+                                    <input type="radio" name="payment" value="card" class="w-5 h-5 text-orange-500" checked>
+                                    <div class="flex-1">
+                                        <div class="text-white font-medium">Kredi/Banka Kartı</div>
+                                        <div class="text-white/70 text-sm">Güvenli ödeme ile hemen sipariş verin</div>
+                                    </div>
+                                    <span class="text-2xl">💳</span>
+                                </label>
+                                
+                                <label class="flex items-center gap-3 p-4 bg-white/10 rounded-lg cursor-pointer hover:bg-white/20 transition-colors duration-300">
+                                    <input type="radio" name="payment" value="cash" class="w-5 h-5 text-orange-500">
+                                    <div class="flex-1">
+                                        <div class="text-white font-medium">Kapıda Nakit</div>
+                                        <div class="text-white/70 text-sm">Teslimat sırasında nakit ödeme</div>
+                                    </div>
+                                    <span class="text-2xl">💵</span>
+                                </label>
+                                
+                                <label class="flex items-center gap-3 p-4 bg-white/10 rounded-lg cursor-pointer hover:bg-white/20 transition-colors duration-300">
+                                    <input type="radio" name="payment" value="online" class="w-5 h-5 text-orange-500">
+                                    <div class="flex-1">
+                                        <div class="text-white font-medium">Online Cüzdan</div>
+                                        <div class="text-white/70 text-sm">Papara, Tosla veya diğer cüzdanlar</div>
+                                    </div>
+                                    <span class="text-2xl">📱</span>
+                                </label>
+                            </div>
+                        </div>
 
-            <!-- Bottom Navigation Dots -->
-            <div class="flex justify-center mt-8 gap-2">
-                <div class="w-3 h-3 bg-white rounded-full"></div>
-                <div class="w-3 h-3 bg-white/50 rounded-full"></div>
-                <div class="w-3 h-3 bg-white/50 rounded-full"></div>
-                <div class="w-3 h-3 bg-white/50 rounded-full"></div>
+                        <!-- Order Note -->
+                        <div class="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6">
+                            <h3 class="text-white text-xl font-semibold mb-4">Sipariş Notu</h3>
+                            
+                            <textarea 
+                                id="orderNote"
+                                placeholder="Siparişiniz ile ilgili özel bir isteğiniz varsa buraya yazabilirsiniz..."
+                                class="w-full h-32 bg-white/10 border border-white/20 rounded-lg p-4 text-white placeholder-white/50 resize-none focus:outline-none focus:border-white/40 transition-colors duration-300"
+                            ></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="lg:col-span-1">
+                        <div class="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6 sticky top-24">
+                            <h3 class="text-white text-xl font-semibold mb-4">Ödeme Özeti</h3>
+                            
+                            <div class="space-y-3 mb-6">
+                                <div class="flex justify-between text-white/80">
+                                    <span>Ürün Toplamı:</span>
+                                    <span id="paymentSubtotal">0.00 ₺</span>
+                                </div>
+                                <div class="flex justify-between text-white/80">
+                                    <span>KDV (%8):</span>
+                                    <span id="paymentTax">0.00 ₺</span>
+                                </div>
+                                <div class="flex justify-between text-white/80">
+                                    <span>Teslimat Ücreti:</span>
+                                    <span>Ücretsiz</span>
+                                </div>
+                                <div class="h-px bg-white/20"></div>
+                                <div class="flex justify-between text-white text-xl font-bold">
+                                    <span>Toplam:</span>
+                                    <span id="paymentTotal">0.00 ₺</span>
+                                </div>
+                            </div>
+                            
+                            <button onclick="completeOrder()" class="w-full bg-green-500 text-white py-4 px-4 rounded-lg font-semibold hover:bg-green-600 transition-all duration-300 hover:-translate-y-0.5 text-lg">
+                                Siparişi Tamamla
+                            </button>
+                            
+                            <div class="mt-4 text-center">
+                                <button onclick="showStep('cart')" class="text-white/70 hover:text-white text-sm transition-colors duration-300">
+                                    ← Sepete Dön
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -278,37 +399,6 @@
     <div id="cartBadge" class="fixed bottom-8 right-8 bg-orange-500 text-white w-14 h-14 rounded-full flex items-center justify-center text-xl shadow-lg cursor-pointer z-50 transition-transform duration-300 hover:scale-110">
         🛒
         <span id="cartCount" class="absolute -top-2 -right-2 bg-red-500 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold">0</span>
-    </div>
-
-    <!-- Cart Modal -->
-    <div id="cartModal" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50 opacity-0 invisible transition-all duration-300">
-        <div class="bg-white/15 backdrop-blur-xl border border-white/30 rounded-2xl p-8 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto transform scale-75 transition-all duration-300 scrollbar-thin">
-            <div class="flex justify-between items-center mb-6 pb-4 border-b border-white/20">
-                <h2 class="text-white text-2xl font-bold">Sepetim</h2>
-                <button id="cartClose" class="text-white hover:bg-white/20 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 hover:rotate-90">
-                    ✕
-                </button>
-            </div>
-            
-            <div id="cartItems" class="mb-6">
-                <!-- Cart items will be populated by JavaScript -->
-            </div>
-            
-            <div id="cartSummary" class="bg-white/10 rounded-xl p-6">
-                <div class="flex justify-between items-center mb-4 pb-4 border-b border-white/20">
-                    <span class="text-white text-lg font-semibold">Toplam:</span>
-                    <span id="cartTotalAmount" class="text-white text-2xl font-bold">0.00 ₺</span>
-                </div>
-                <div class="flex gap-4">
-                    <button id="clearCart" class="flex-1 bg-white/20 text-white py-3 px-4 rounded-lg font-semibold hover:bg-white/30 transition-colors duration-300">
-                        Sepeti Temizle
-                    </button>
-                    <button id="checkoutBtn" class="flex-1 bg-orange-500 text-white py-3 px-4 rounded-lg font-semibold hover:bg-orange-600 transition-all duration-300 hover:-translate-y-0.5">
-                        Sipariş Ver
-                    </button>
-                </div>
-            </div>
-        </div>
     </div>
 
     <script>
@@ -463,6 +553,7 @@
         // Global variables
         let cart = [];
         let currentCategory = 'all';
+        let currentStep = 'order';
         let currentFilters = {
             vegetarian: false,
             spicy: false,
@@ -480,26 +571,14 @@
         const cartCount = document.getElementById('cartCount');
         const categoryLinks = document.querySelectorAll('[data-category]');
         const cartBadge = document.getElementById('cartBadge');
-        const cartModal = document.getElementById('cartModal');
-        const cartClose = document.getElementById('cartClose');
         const cartItems = document.getElementById('cartItems');
-        const cartSummary = document.getElementById('cartSummary');
-        const cartTotalAmount = document.getElementById('cartTotalAmount');
-        const clearCart = document.getElementById('clearCart');
-        const checkoutBtn = document.getElementById('checkoutBtn');
         const profileButton = document.getElementById('profileButton');
         const profileDropdown = document.getElementById('profileDropdown');
 
         // Event listeners
         menuToggle.addEventListener('click', toggleSidebar);
         overlay.addEventListener('click', closeSidebar);
-        cartBadge.addEventListener('click', openCartModal);
-        cartClose.addEventListener('click', closeCartModal);
-        cartModal.addEventListener('click', (e) => {
-            if (e.target === cartModal) closeCartModal();
-        });
-        clearCart.addEventListener('click', clearCartItems);
-        checkoutBtn.addEventListener('click', checkout);
+        cartBadge.addEventListener('click', () => showStep('cart'));
         profileButton.addEventListener('click', toggleProfileDropdown);
         
         // Close profile dropdown when clicking outside
@@ -563,6 +642,9 @@
             };
             categoryTitle.textContent = categoryNames[category];
             
+            // Show order step
+            showStep('order');
+            
             // Close sidebar on mobile
             if (window.innerWidth < 1024) {
                 closeSidebar();
@@ -592,6 +674,65 @@
                 dropdown.classList.remove('opacity-0', 'invisible', '-translate-y-2');
                 dropdown.classList.add('opacity-100', 'visible', 'translate-y-0');
             }
+        }
+
+        function showStep(step) {
+            currentStep = step;
+            
+            // Hide all steps
+            document.getElementById('orderStep').classList.add('hidden');
+            document.getElementById('cartStep').classList.add('hidden');
+            document.getElementById('paymentStep').classList.add('hidden');
+            
+            // Show current step
+            document.getElementById(step + 'Step').classList.remove('hidden');
+            
+            // Update progress indicators
+            updateProgressIndicators(step);
+            
+            // Update cart totals if showing cart or payment
+            if (step === 'cart' || step === 'payment') {
+                updateCartTotals();
+            }
+            
+            // Render cart items if showing cart
+            if (step === 'cart') {
+                renderCartItems();
+            }
+            
+            // Hide cart badge on cart and payment steps
+            if (step === 'cart' || step === 'payment') {
+                cartBadge.style.display = 'none';
+            } else {
+                cartBadge.style.display = 'flex';
+            }
+        }
+
+        function updateProgressIndicators(step) {
+            const steps = ['order', 'cart', 'payment'];
+            const stepIndex = steps.indexOf(step);
+            
+            // Update step circles
+            document.getElementById('step1').querySelector('div').className = stepIndex >= 0 ? 
+                'w-10 h-10 md:w-12 md:h-12 bg-white rounded-full flex items-center justify-center mb-1 md:mb-2 shadow-lg transition-all duration-300 group-hover:scale-110' : 
+                'w-10 h-10 md:w-12 md:h-12 bg-white/30 rounded-full flex items-center justify-center mb-1 md:mb-2 transition-all duration-300 group-hover:scale-110';
+            
+            document.getElementById('step2').querySelector('div').className = stepIndex >= 1 ? 
+                'w-10 h-10 md:w-12 md:h-12 bg-white rounded-full flex items-center justify-center mb-1 md:mb-2 shadow-lg transition-all duration-300 group-hover:scale-110' : 
+                'w-10 h-10 md:w-12 md:h-12 bg-white/30 rounded-full flex items-center justify-center mb-1 md:mb-2 transition-all duration-300 group-hover:scale-110';
+            
+            document.getElementById('step3').querySelector('div').className = stepIndex >= 2 ? 
+                'w-10 h-10 md:w-12 md:h-12 bg-white rounded-full flex items-center justify-center mb-1 md:mb-2 shadow-lg transition-all duration-300 group-hover:scale-110' : 
+                'w-10 h-10 md:w-12 md:h-12 bg-white/30 rounded-full flex items-center justify-center mb-1 md:mb-2 transition-all duration-300 group-hover:scale-110';
+            
+            // Update step text colors
+            document.getElementById('step1').querySelector('span:first-child').className = stepIndex >= 0 ? 'text-orange-500 font-bold text-sm md:text-base' : 'text-white font-bold text-sm md:text-base';
+            document.getElementById('step2').querySelector('span:first-child').className = stepIndex >= 1 ? 'text-orange-500 font-bold text-sm md:text-base' : 'text-white font-bold text-sm md:text-base';
+            document.getElementById('step3').querySelector('span:first-child').className = stepIndex >= 2 ? 'text-orange-500 font-bold text-sm md:text-base' : 'text-white font-bold text-sm md:text-base';
+            
+            // Update progress lines
+            document.getElementById('progress1').style.width = stepIndex >= 1 ? '100%' : '0%';
+            document.getElementById('progress2').style.width = stepIndex >= 2 ? '100%' : '0%';
         }
 
         function updateProductOption(productId, optionType, value) {
@@ -729,7 +870,6 @@
                     });
                 }
                 updateCartCount();
-                updateCartTotal();
                 showNotification('Ürün sepete eklendi!');
             }
         }
@@ -739,72 +879,77 @@
             cartCount.textContent = totalItems;
         }
 
-        function updateCartTotal() {
-            const total = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
-            cartTotalAmount.textContent = total.toFixed(2) + ' ₺';
-        }
-
-        function openCartModal() {
-            cartModal.classList.remove('opacity-0', 'invisible');
-            cartModal.classList.add('opacity-100', 'visible');
-            cartModal.querySelector('.bg-white\\/15').classList.remove('scale-75');
-            cartModal.querySelector('.bg-white\\/15').classList.add('scale-100');
-            renderCartItems();
-        }
-
-        function closeCartModal() {
-            cartModal.classList.add('opacity-0', 'invisible');
-            cartModal.classList.remove('opacity-100', 'visible');
-            cartModal.querySelector('.bg-white\\/15').classList.add('scale-75');
-            cartModal.querySelector('.bg-white\\/15').classList.remove('scale-100');
+        function updateCartTotals() {
+            const subtotal = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+            const tax = subtotal * 0.08;
+            const total = subtotal + tax;
+            
+            // Update cart step
+            if (document.getElementById('cartSubtotal')) {
+                document.getElementById('cartSubtotal').textContent = subtotal.toFixed(2) + ' ₺';
+                document.getElementById('cartTax').textContent = tax.toFixed(2) + ' ₺';
+                document.getElementById('cartTotal').textContent = total.toFixed(2) + ' ₺';
+            }
+            
+            // Update payment step
+            if (document.getElementById('paymentSubtotal')) {
+                document.getElementById('paymentSubtotal').textContent = subtotal.toFixed(2) + ' ₺';
+                document.getElementById('paymentTax').textContent = tax.toFixed(2) + ' ₺';
+                document.getElementById('paymentTotal').textContent = total.toFixed(2) + ' ₺';
+            }
         }
 
         function renderCartItems() {
             if (cart.length === 0) {
                 cartItems.innerHTML = `
-                    <div class="text-center py-12 text-white/80">
+                    <div class="text-center py-16 bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl">
                         <div class="text-6xl mb-4">🛒</div>
-                        <div class="text-lg mb-2">Sepetiniz boş</div>
-                        <div class="text-sm opacity-70">Lezzetli yemeklerimizi keşfedin!</div>
+                        <div class="text-white text-xl mb-2">Sepetiniz boş</div>
+                        <div class="text-white/70 mb-6">Lezzetli yemeklerimizi keşfedin!</div>
+                        <button onclick="showStep('order')" class="bg-orange-500 text-white py-3 px-6 rounded-lg font-semibold hover:bg-orange-600 transition-all duration-300 hover:-translate-y-0.5">
+                            Alışverişe Başla
+                        </button>
                     </div>
                 `;
-                cartSummary.style.display = 'none';
                 return;
             }
 
-            cartSummary.style.display = 'block';
             cartItems.innerHTML = cart.map(item => `
-                <div class="flex items-center gap-4 p-4 bg-white/10 rounded-xl mb-4 transition-all duration-300 hover:bg-white/15 hover:translate-x-1">
-                    <img src="${item.image}" alt="${item.name}" class="w-20 h-20 object-cover rounded-lg">
-                    <div class="flex-1">
-                        <div class="text-white font-semibold mb-1">${item.name}</div>
-                        ${item.selectedOptions ? `
-                            <div class="text-white/70 text-xs mb-2">
-                                ${item.selectedOptions.spice === 'baharatli' ? 'Baharatlı' : 'Baharatsız'} • 
-                                ${item.selectedOptions.sauce === 'ketcap' ? 'Ketçap' : 
-                                  item.selectedOptions.sauce === 'mayonez' ? 'Mayonez' : 'Sos İstemiyorum'}
+                <div class="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6 transition-all duration-300 hover:bg-white/15">
+                    <div class="flex items-center gap-4">
+                        <img src="${item.image}" alt="${item.name}" class="w-24 h-24 object-cover rounded-lg">
+                        <div class="flex-1">
+                            <h4 class="text-white text-lg font-semibold mb-1">${item.name}</h4>
+                            ${item.selectedOptions ? `
+                                <div class="text-white/70 text-sm mb-2">
+                                    ${item.selectedOptions.spice === 'baharatli' ? 'Baharatlı' : 'Baharatsız'} • 
+                                    ${item.selectedOptions.sauce === 'ketcap' ? 'Ketçap' : 
+                                      item.selectedOptions.sauce === 'mayonez' ? 'Mayonez' : 'Sos İstemiyorum'}
+                                </div>
+                            ` : ''}
+                            <div class="flex items-center gap-3">
+                                <span class="text-white font-bold text-lg">${item.price.toFixed(2)} ₺</span>
+                                ${item.originalPrice ? `<span class="text-white/60 line-through">${item.originalPrice.toFixed(2)} ₺</span>` : ''}
+                                ${item.discount > 0 ? `<span class="bg-red-500 text-white px-2 py-1 rounded text-xs font-semibold">%${item.discount}</span>` : ''}
                             </div>
-                        ` : ''}
-                        <div class="flex items-center gap-2 mb-2">
-                            <span class="text-white font-bold">${item.price.toFixed(2)} ₺</span>
-                            ${item.originalPrice ? `<span class="text-white/60 text-sm line-through">${item.originalPrice.toFixed(2)} ₺</span>` : ''}
-                            ${item.discount > 0 ? `<span class="bg-red-500 text-white px-1 py-0.5 rounded text-xs font-semibold">%${item.discount}</span>` : ''}
                         </div>
-                        <div class="flex items-center gap-2">
-                            <button onclick="decreaseQuantity('${item.key}')" ${item.quantity === 1 ? 'disabled' : ''} class="bg-white/20 hover:bg-white/30 text-white w-8 h-8 rounded-full flex items-center justify-center font-semibold transition-all duration-300 hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed">
+                        <div class="flex items-center gap-3">
+                            <button onclick="decreaseQuantity('${item.key}')" ${item.quantity === 1 ? 'disabled' : ''} class="bg-white/20 hover:bg-white/30 text-white w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300 hover:scale-110 disabled:opacity-50 disabled:cursor-not-allowed">
                                 -
                             </button>
-                            <span class="text-white font-semibold min-w-[30px] text-center">${item.quantity}</span>
-                            <button onclick="increaseQuantity('${item.key}')" class="bg-white/20 hover:bg-white/30 text-white w-8 h-8 rounded-full flex items-center justify-center font-semibold transition-all duration-300 hover:scale-110">
+                            <span class="text-white font-semibold text-lg min-w-[40px] text-center">${item.quantity}</span>
+                            <button onclick="increaseQuantity('${item.key}')" class="bg-white/20 hover:bg-white/30 text-white w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-all duration-300 hover:scale-110">
                                 +
                             </button>
-                            <button onclick="removeFromCart('${item.key}')" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs ml-2 transition-all duration-300 hover:scale-105">
+                            <button onclick="removeFromCart('${item.key}')" class="bg-red-500 hover:bg-red-600 text-white p-2 rounded-lg ml-2 transition-all duration-300 hover:scale-105">
                                 🗑️
                             </button>
                         </div>
                     </div>
                 </div>
             `).join('');
+            
+            updateCartTotals();
         }
 
         function increaseQuantity(itemKey) {
@@ -812,7 +957,6 @@
             if (item) {
                 item.quantity += 1;
                 updateCartCount();
-                updateCartTotal();
                 renderCartItems();
             }
         }
@@ -822,7 +966,6 @@
             if (item && item.quantity > 1) {
                 item.quantity -= 1;
                 updateCartCount();
-                updateCartTotal();
                 renderCartItems();
             }
         }
@@ -830,38 +973,43 @@
         function removeFromCart(itemKey) {
             cart = cart.filter(item => item.key !== itemKey);
             updateCartCount();
-            updateCartTotal();
             renderCartItems();
             showNotification('Ürün sepetten kaldırıldı!');
         }
 
         function clearCartItems() {
-            cart = [];
-            updateCartCount();
-            updateCartTotal();
-            renderCartItems();
-            showNotification('Sepet temizlendi!');
+            if (confirm('Sepeti temizlemek istediğinizden emin misiniz?')) {
+                cart = [];
+                updateCartCount();
+                renderCartItems();
+                showNotification('Sepet temizlendi!');
+            }
         }
 
-        function checkout() {
+        function completeOrder() {
             if (cart.length === 0) {
                 showNotification('Sepetiniz boş!');
                 return;
             }
             
-            const total = cart.reduce((total, item) => total + (item.price * item.quantity), 0);
-            showNotification(`Sipariş alındı! Toplam: ${total.toFixed(2)} ₺`);
+            const paymentMethod = document.querySelector('input[name="payment"]:checked').value;
+            const orderNote = document.getElementById('orderNote').value;
+            const total = cart.reduce((total, item) => total + (item.price * item.quantity), 0) * 1.08; // Including tax
             
-            // Clear cart after checkout
+            showNotification(`Siparişiniz alındı! Toplam: ${total.toFixed(2)} ₺`);
+            
+            // Clear cart after order
             setTimeout(() => {
-                clearCartItems();
-                closeCartModal();
+                cart = [];
+                updateCartCount();
+                showStep('order');
+                showNotification('Siparişiniz hazırlanıyor... 🍔');
             }, 2000);
         }
 
         function showNotification(message) {
             const notification = document.createElement('div');
-            notification.className = 'fixed top-5 right-5 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-slide-in';
+            notification.className = 'fixed top-20 right-5 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 animate-slide-in';
             notification.textContent = message;
             document.body.appendChild(notification);
 
@@ -882,6 +1030,7 @@
 
         // Initialize
         renderProducts();
+        showStep('order');
     </script>
 </body>
 </html>
