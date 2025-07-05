@@ -19,9 +19,9 @@ export function Header({ onMenuToggle, currentStep = 'order', onStepChange }: He
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
 
   const steps = [
-    { id: 'order', label: 'sipariş', step: 1 },
-    { id: 'cart', label: 'sepet', step: 2 },
-    { id: 'payment', label: 'ödeme', step: 3 },
+    { id: 'order', label: 'Sipariş', step: 1 },
+    { id: 'cart', label: 'Sepet', step: 2 },
+    { id: 'payment', label: 'Ödeme', step: 3 },
   ];
 
   const currentStepIndex = steps.findIndex(step => step.id === currentStep);
