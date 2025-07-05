@@ -2,256 +2,227 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Order, Product, Analytics } from '@/types';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
-import { AdminHeader } from '@/components/admin/AdminHeader';
-import { StatCard } from '@/components/admin/StatCard';
-import { RecentOrders } from '@/components/admin/RecentOrders';
-import { PopularProducts } from '@/components/admin/PopularProducts';
-import { SalesChart } from '@/components/admin/SalesChart';
-import toast, { Toaster } from 'react-hot-toast';
+import { AnalyticsChart } from '@/components/admin/AnalyticsChart';
+import { AnalyticsData } from '@/types/admin';
+import { 
+  CurrencyDollarIcon,
+  ShoppingBagIcon,
+  UserGroupIcon,
+  ClipboardDocumentListIcon
+} from '@heroicons/react/24/outline';
 
 export default function AdminDashboard() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
-  const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (status === 'loading') return;
-    
-    if (!session || session.user?.role !== 'admin') {
-      router.push('/');
-      return;
-    }
-
     fetchAnalytics();
-  }, [session, status, router]);
+  }, []);
 
   const fetchAnalytics = async () => {
     try {
-      setLoading(true);
+      const response = await fetch('/api/admin/analytics');
+      const result = await response.json();
       
-      // Fetch orders
-      const ordersResponse = await fetch('/api/orders');
-      const ordersResult = await ordersResponse.json();
-      
-      // Fetch products
-      const productsResponse = await fetch('/api/products');
-      const productsResult = await productsResponse.json();
-
-      if (ordersResult.success && productsResult.success) {
-        const orders = ordersResult.data as Order[];
-        const products = productsResult.data as Product[];
-        
-        // Calculate analytics
-        const totalOrders = orders.length;
-        const totalRevenue = orders.reduce((sum, order) => sum + order.total, 0);
-        
-        // Recent orders (last 10)
-        const recentOrders = orders.slice(0, 10);
-        
-        // Popular products calculation
-        const productSales = new Map();
-        orders.forEach(order => {
-          order.items.forEach(item => {
-            const current = productSales.get(item.id) || { orderCount: 0, revenue: 0 };
-            productSales.set(item.id, {
-              orderCount: current.orderCount + item.quantity,
-              revenue: current.revenue + (item.price * item.quantity),
-            });
-          });
-        });
-        
-        const popularProducts = Array.from(productSales.entries())
-          .map(([productId, stats]) => ({
-            product: products.find(p => p.id === productId),
-            ...stats,
-          }))
-          .filter(item => item.product)
-          .sort((a, b) => b.orderCount - a.orderCount)
-          .slice(0, 5);
-
-        // Daily stats (last 7 days)
-        const dailyStats = [];
-        for (let i = 6; i >= 0; i--) {
-          const date = new Date();
-          date.setDate(date.getDate() - i);
-          const dateStr = date.toISOString().split('T')[0];
-          
-          const dayOrders = orders.filter(order => 
-            order.createdAt.startsWith(dateStr)
-          );
-          
-          dailyStats.push({
-            date: dateStr,
-            orders: dayOrders.length,
-            revenue: dayOrders.reduce((sum, order) => sum + order.total, 0),
-          });
-        }
-
-        setAnalytics({
-          totalOrders,
-          totalRevenue,
-          popularProducts,
-          recentOrders,
-          dailyStats,
-        });
-      } else {
-        toast.error('Veriler yüklenirken hata oluştu');
+      if (result.success) {
+        setAnalytics(result.data);
       }
     } catch (error) {
-      console.error('Fetch analytics error:', error);
-      toast.error('Veriler yüklenirken hata oluştu');
+      console.error('Analytics fetch error:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  if (status === 'loading' || loading) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-500 via-red-500 to-pink-500 flex items-center justify-center">
-        <LoadingSpinner />
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
       </div>
     );
   }
 
-  if (!session || session.user?.role !== 'admin') {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-500 via-red-500 to-pink-500 flex items-center justify-center">
-        <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-8 text-center max-w-md">
-          <div className="text-6xl mb-4">🚫</div>
-          <h2 className="text-white text-2xl font-bold mb-4">Yetkisiz Erişim</h2>
-          <p className="text-white/80 mb-6">
-            Bu sayfaya erişim yetkiniz bulunmamaktadır. Admin hesabı ile giriş yapmanız gerekiyor.
-          </p>
-          <div className="flex flex-col gap-3">
-            <Link 
-              href="/"
-              className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-300"
-            >
-              Ana Sayfaya Dön
-            </Link>
-            <Link 
-              href="/auth/signin"
-              className="bg-white/20 hover:bg-white/30 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-300"
-            >
-              Giriş Yap
-            </Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const stats = [
+    {
+      name: 'Toplam Gelir',
+      value: `₺${analytics?.totalRevenue.toLocaleString() || '0'}`,
+      icon: CurrencyDollarIcon,
+      color: 'text-green-400',
+      bg: 'bg-green-500/20',
+      change: '+12.3%'
+    },
+    {
+      name: 'Toplam Sipariş',
+      value: analytics?.totalOrders.toLocaleString() || '0',
+      icon: ClipboardDocumentListIcon,
+      color: 'text-blue-400',
+      bg: 'bg-blue-500/20',
+      change: '+8.1%'
+    },
+    {
+      name: 'Toplam Kullanıcı',
+      value: analytics?.totalUsers.toLocaleString() || '0',
+      icon: UserGroupIcon,
+      color: 'text-purple-400',
+      bg: 'bg-purple-500/20',
+      change: '+5.4%'
+    },
+    {
+      name: 'Toplam Ürün',
+      value: analytics?.totalProducts.toLocaleString() || '0',
+      icon: ShoppingBagIcon,
+      color: 'text-orange-400',
+      bg: 'bg-orange-500/20',
+      change: '+2.1%'
+    },
+  ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-500 via-red-500 to-pink-500">
-      <AdminHeader />
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Dashboard</h1>
+          <p className="text-white/70 mt-2">Turkid FastFood yönetim paneline hoş geldiniz</p>
+        </div>
+        <div className="text-white/60 text-sm">
+          Son güncelleme: {new Date().toLocaleTimeString('tr-TR')}
+        </div>
+      </div>
 
-      <div className="container mx-auto px-4 py-8">
-        {/* Welcome Section */}
-        <div className="mb-8">
-          <h1 className="text-white text-3xl font-bold mb-2">Admin Dashboard</h1>
-          <p className="text-white/80">
-            Hoş geldiniz, {session.user?.name}. İşte bugünkü özet:
-          </p>
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {stats.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <div key={stat.name} className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-white/80 text-sm font-medium">{stat.name}</p>
+                  <div className="flex items-center gap-2 mt-2">
+                    <p className="text-2xl font-bold text-white">{stat.value}</p>
+                    <span className="text-green-400 text-sm font-medium">{stat.change}</span>
+                  </div>
+                </div>
+                <div className={`p-3 rounded-full ${stat.bg}`}>
+                  <Icon className={`w-6 h-6 ${stat.color}`} />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Revenue Chart */}
+        <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6">
+          <h3 className="text-xl font-semibold text-white mb-4">Aylık Gelir</h3>
+          <AnalyticsChart 
+            data={analytics?.monthlyRevenue || []} 
+            type="revenue"
+          />
         </div>
 
-        {analytics && (
-          <>
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <StatCard
-                title="Toplam Sipariş"
-                value={analytics.totalOrders.toString()}
-                icon="📋"
-                color="blue"
-              />
-              <StatCard
-                title="Toplam Gelir"
-                value={`${analytics.totalRevenue.toFixed(2)} ₺`}
-                icon="💰"
-                color="green"
-              />
-              <StatCard
-                title="Popüler Ürün"
-                value={analytics.popularProducts.length.toString()}
-                icon="🍔"
-                color="orange"
-              />
-              <StatCard
-                title="Bugünkü Sipariş"
-                value={analytics.dailyStats[6]?.orders.toString() || '0'}
-                icon="🎯"
-                color="purple"
-              />
-            </div>
+        {/* Orders Chart */}
+        <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6">
+          <h3 className="text-xl font-semibold text-white mb-4">Günlük Siparişler</h3>
+          <AnalyticsChart 
+            data={analytics?.dailyRevenue || []} 
+            type="orders"
+          />
+        </div>
+      </div>
 
-            {/* Charts and Data */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-              <SalesChart data={analytics.dailyStats} />
-              <PopularProducts products={analytics.popularProducts} />
-            </div>
-
-            {/* Recent Orders */}
-            <RecentOrders orders={analytics.recentOrders} />
-          </>
-        )}
-
+      {/* Quick Actions & Recent Orders */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Quick Actions */}
-        <div className="mt-8">
-          <h2 className="text-white text-xl font-semibold mb-4">Hızlı İşlemler</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6">
+          <h3 className="text-xl font-semibold text-white mb-4">Hızlı İşlemler</h3>
+          <div className="grid grid-cols-2 gap-4">
             <Link
-              href="/admin/products"
-              className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6 hover:bg-white/20 transition-all duration-300 hover:-translate-y-1 group"
+              href="/admin/products/add"
+              className="bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded-lg p-4 transition-colors group"
             >
-              <div className="text-center">
-                <div className="text-4xl mb-3 group-hover:scale-110 transition-transform duration-300">🍔</div>
-                <h3 className="text-white font-semibold mb-2">Ürün Yönetimi</h3>
-                <p className="text-white/80 text-sm">Ürün ekle, düzenle veya sil</p>
-              </div>
+              <div className="text-blue-400 text-2xl mb-2">📦</div>
+              <div className="text-white font-medium">Yeni Ürün</div>
             </Link>
+            <Link
+              href="/admin/categories/add"
+              className="bg-green-500/20 hover:bg-green-500/30 border border-green-500/30 rounded-lg p-4 transition-colors group"
+            >
+              <div className="text-green-400 text-2xl mb-2">🏷️</div>
+              <div className="text-white font-medium">Yeni Kategori</div>
+            </Link>
+            <Link
+              href="/admin/coupons/add"
+              className="bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 rounded-lg p-4 transition-colors group"
+            >
+              <div className="text-purple-400 text-2xl mb-2">🎫</div>
+              <div className="text-white font-medium">Yeni Kupon</div>
+            </Link>
+            <Link
+              href="/admin/users/add"
+              className="bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 rounded-lg p-4 transition-colors group"
+            >
+              <div className="text-orange-400 text-2xl mb-2">👤</div>
+              <div className="text-white font-medium">Yeni Kullanıcı</div>
+            </Link>
+          </div>
+        </div>
 
-            <Link
-              href="/admin/orders"
-              className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6 hover:bg-white/20 transition-all duration-300 hover:-translate-y-1 group"
-            >
-              <div className="text-center">
-                <div className="text-4xl mb-3 group-hover:scale-110 transition-transform duration-300">📋</div>
-                <h3 className="text-white font-semibold mb-2">Sipariş Yönetimi</h3>
-                <p className="text-white/80 text-sm">Siparişleri görüntüle ve yönet</p>
-              </div>
+        {/* Recent Orders */}
+        <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-semibold text-white">Son Siparişler</h3>
+            <Link href="/admin/orders" className="text-blue-400 hover:text-blue-300 text-sm">
+              Tümünü Gör
             </Link>
-
-            <Link
-              href="/admin/analytics"
-              className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6 hover:bg-white/20 transition-all duration-300 hover:-translate-y-1 group"
-            >
-              <div className="text-center">
-                <div className="text-4xl mb-3 group-hover:scale-110 transition-transform duration-300">📊</div>
-                <h3 className="text-white font-semibold mb-2">Detaylı Analiz</h3>
-                <p className="text-white/80 text-sm">Satış raporları ve istatistikler</p>
+          </div>
+          <div className="space-y-3">
+            {analytics?.recentOrders.slice(0, 5).map((order, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                <div>
+                  <div className="text-white font-medium">#{order.orderNumber || `ORD-${order.id?.slice(-6)}`}</div>
+                  <div className="text-white/60 text-sm">{order.userName}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-white font-medium">₺{order.total?.toFixed(2)}</div>
+                  <div className={`text-xs px-2 py-1 rounded-full ${
+                    order.status === 'delivered' ? 'bg-green-500/20 text-green-400' :
+                    order.status === 'cancelled' ? 'bg-red-500/20 text-red-400' :
+                    'bg-yellow-500/20 text-yellow-400'
+                  }`}>
+                    {order.status}
+                  </div>
+                </div>
               </div>
-            </Link>
+            ))}
           </div>
         </div>
       </div>
 
-      <Toaster 
-        position="top-right"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: 'rgba(0, 0, 0, 0.8)',
-            color: '#fff',
-            backdropFilter: 'blur(10px)',
-          },
-        }}
-      />
+      {/* Top Products */}
+      <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6">
+        <h3 className="text-xl font-semibold text-white mb-4">En Çok Satan Ürünler</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {analytics?.topProducts.slice(0, 6).map((item, index) => (
+            <div key={index} className="bg-white/5 rounded-lg p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center text-white font-bold">
+                  {index + 1}
+                </div>
+                <div className="flex-1">
+                  <div className="text-white font-medium">{item.product?.name}</div>
+                  <div className="text-white/60 text-sm">{item.sales} satış</div>
+                </div>
+                <div className="text-white font-bold">₺{item.revenue?.toFixed(2)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

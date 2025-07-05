@@ -27,6 +27,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { productIds, action, data } = body;
 
+    console.log('🔍 Bulk operation:', { productIds, action, data });
+
     if (!Array.isArray(productIds) || productIds.length === 0) {
       return NextResponse.json<ApiResponse>({
         success: false,
@@ -97,28 +99,11 @@ export async function POST(request: NextRequest) {
         });
         break;
 
-      case 'updateCategory':
-        if (!data?.category) {
+      case 'addDiscount':
+        if (!data?.percentage || data.percentage <= 0 || data.percentage >= 100) {
           return NextResponse.json<ApiResponse>({
             success: false,
-            error: 'Kategori bilgisi gerekli',
-          }, { status: 400 });
-        }
-        
-        productIds.forEach((productId: string) => {
-          const productRef = adminDb.collection('products').doc(productId);
-          batch.update(productRef, {
-            category: data.category,
-            updatedAt: timestamp,
-          });
-        });
-        break;
-
-      case 'updatePrice':
-        if (!data?.priceUpdate) {
-          return NextResponse.json<ApiResponse>({
-            success: false,
-            error: 'Fiyat güncelleme bilgisi gerekli',
+            error: 'Geçerli bir indirim yüzdesi gerekli (1-99)',
           }, { status: 400 });
         }
 
@@ -130,108 +115,43 @@ export async function POST(request: NextRequest) {
         productDocs.forEach((doc, index) => {
           if (doc.exists) {
             const currentData = doc.data();
-            let newPrice = currentData?.price;
-
-            if (data.priceUpdate.type === 'percentage') {
-              const percentage = parseFloat(data.priceUpdate.value);
-              newPrice = currentData?.price * (1 + percentage / 100);
-            } else if (data.priceUpdate.type === 'fixed') {
-              const amount = parseFloat(data.priceUpdate.value);
-              newPrice = data.priceUpdate.operation === 'add' 
-                ? currentData?.price + amount 
-                : currentData?.price - amount;
-            } else if (data.priceUpdate.type === 'absolute') {
-              newPrice = parseFloat(data.priceUpdate.value);
-            }
-
-            // İndirim hesapla
-            let discount = 0;
-            if (currentData?.originalPrice && newPrice) {
-              discount = Math.round(((currentData.originalPrice - newPrice) / currentData.originalPrice) * 100);
-            }
+            const currentPrice = currentData?.price || 0;
+            const discountPercentage = data.percentage;
+            const originalPrice = currentData?.originalPrice || currentPrice;
+            const newPrice = originalPrice * (1 - discountPercentage / 100);
 
             const productRef = adminDb.collection('products').doc(productIds[index]);
             batch.update(productRef, {
-              price: Math.max(0, newPrice), // Negatif fiyat olmasın
-              discount: Math.max(0, discount),
+              price: Math.round(newPrice * 100) / 100, // 2 decimal places
+              originalPrice: originalPrice,
+              discount: discountPercentage,
               updatedAt: timestamp,
             });
           }
         });
         break;
 
-      case 'addTag':
-        if (!data?.tag) {
-          return NextResponse.json<ApiResponse>({
-            success: false,
-            error: 'Etiket bilgisi gerekli',
-          }, { status: 400 });
-        }
-
-        // Mevcut ürünleri al ve etiket ekle
-        const productsForTag = await Promise.all(
+      case 'removeDiscount':
+        // Önce mevcut ürünleri al
+        const productDocsForDiscount = await Promise.all(
           productIds.map((id: string) => adminDb.collection('products').doc(id).get())
         );
 
-        productsForTag.forEach((doc, index) => {
+        productDocsForDiscount.forEach((doc, index) => {
           if (doc.exists) {
             const currentData = doc.data();
-            const currentTags = currentData?.tags || [];
-            
-            if (!currentTags.includes(data.tag)) {
+            const originalPrice = currentData?.originalPrice;
+
+            if (originalPrice) {
               const productRef = adminDb.collection('products').doc(productIds[index]);
               batch.update(productRef, {
-                tags: [...currentTags, data.tag],
+                price: originalPrice,
+                originalPrice: null,
+                discount: 0,
                 updatedAt: timestamp,
               });
             }
           }
-        });
-        break;
-
-      case 'removeTag':
-        if (!data?.tag) {
-          return NextResponse.json<ApiResponse>({
-            success: false,
-            error: 'Etiket bilgisi gerekli',
-          }, { status: 400 });
-        }
-
-        // Mevcut ürünleri al ve etiket çıkar
-        const productsForTagRemoval = await Promise.all(
-          productIds.map((id: string) => adminDb.collection('products').doc(id).get())
-        );
-
-        productsForTagRemoval.forEach((doc, index) => {
-          if (doc.exists) {
-            const currentData = doc.data();
-            const currentTags = currentData?.tags || [];
-            
-            if (currentTags.includes(data.tag)) {
-              const productRef = adminDb.collection('products').doc(productIds[index]);
-              batch.update(productRef, {
-                tags: currentTags.filter((tag: string) => tag !== data.tag),
-                updatedAt: timestamp,
-              });
-            }
-          }
-        });
-        break;
-
-      case 'updateStock':
-        if (data?.stock === undefined) {
-          return NextResponse.json<ApiResponse>({
-            success: false,
-            error: 'Stok bilgisi gerekli',
-          }, { status: 400 });
-        }
-
-        productIds.forEach((productId: string) => {
-          const productRef = adminDb.collection('products').doc(productId);
-          batch.update(productRef, {
-            stock: data.stock === null ? null : parseInt(data.stock),
-            updatedAt: timestamp,
-          });
         });
         break;
 
@@ -245,6 +165,8 @@ export async function POST(request: NextRequest) {
     // Batch işlemini gerçekleştir
     await batch.commit();
 
+    console.log('✅ Bulk operation completed successfully');
+
     // İşlem mesajını belirle
     let message = '';
     switch (action) {
@@ -257,20 +179,11 @@ export async function POST(request: NextRequest) {
       case 'delete':
         message = `${productIds.length} ürün silindi`;
         break;
-      case 'updateCategory':
-        message = `${productIds.length} ürünün kategorisi güncellendi`;
+      case 'addDiscount':
+        message = `${productIds.length} ürüne %${data.percentage} indirim uygulandı`;
         break;
-      case 'updatePrice':
-        message = `${productIds.length} ürünün fiyatı güncellendi`;
-        break;
-      case 'addTag':
-        message = `${productIds.length} ürüne etiket eklendi`;
-        break;
-      case 'removeTag':
-        message = `${productIds.length} üründen etiket çıkarıldı`;
-        break;
-      case 'updateStock':
-        message = `${productIds.length} ürünün stoğu güncellendi`;
+      case 'removeDiscount':
+        message = `${productIds.length} üründen indirim kaldırıldı`;
         break;
       default:
         message = `${productIds.length} ürün güncellendi`;
@@ -286,7 +199,7 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Bulk operation error:', error);
+    console.error('❌ Bulk operation error:', error);
     return NextResponse.json<ApiResponse>({
       success: false,
       error: 'Toplu işlem sırasında bir hata oluştu',
