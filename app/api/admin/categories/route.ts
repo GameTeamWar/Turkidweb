@@ -11,18 +11,20 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authConfig) as Session | null;
     
-    if (!session || (session.user as any)?.role !== 'admin') {
+    if (!session || session.user?.role !== 'admin') {
       return NextResponse.json<ApiResponse>({
         success: false,
         error: 'Yetkisiz erişim',
       }, { status: 401 });
     }
 
+    // Firebase Admin yoksa mock data döndür
     if (!adminDb) {
-      // Firebase Admin yoksa örnek data döndür
-      const sampleCategories: Category[] = [
+      console.log('🔄 Firebase Admin bağlantısı yok, mock kategoriler kullanılıyor...');
+      
+      const mockCategories: Category[] = [
         {
-          id: 'cat-1',
+          id: 'et-burger',
           name: 'Et Burger',
           slug: 'et-burger',
           icon: '🍔',
@@ -33,7 +35,7 @@ export async function GET(request: NextRequest) {
           updatedAt: new Date().toISOString(),
         },
         {
-          id: 'cat-2',
+          id: 'tavuk-burger',
           name: 'Tavuk Burger',
           slug: 'tavuk-burger',
           icon: '🐔',
@@ -44,7 +46,7 @@ export async function GET(request: NextRequest) {
           updatedAt: new Date().toISOString(),
         },
         {
-          id: 'cat-3',
+          id: 'izmir-kumru',
           name: 'İzmir Kumru',
           slug: 'izmir-kumru',
           icon: '🥖',
@@ -55,18 +57,18 @@ export async function GET(request: NextRequest) {
           updatedAt: new Date().toISOString(),
         },
         {
-          id: 'cat-4',
+          id: 'doner',
           name: 'Dönerler',
           slug: 'doner',
           icon: '🌯',
-          description: 'Tavuk ve et döner çeşitleri',
+          description: 'Et ve tavuk döner çeşitleri',
           isActive: true,
           sortOrder: 4,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
         {
-          id: 'cat-5',
+          id: 'sandwich',
           name: 'Sandwiçler',
           slug: 'sandwich',
           icon: '🥪',
@@ -77,7 +79,7 @@ export async function GET(request: NextRequest) {
           updatedAt: new Date().toISOString(),
         },
         {
-          id: 'cat-6',
+          id: 'tost',
           name: 'Tostlar',
           slug: 'tost',
           icon: '🍞',
@@ -88,18 +90,18 @@ export async function GET(request: NextRequest) {
           updatedAt: new Date().toISOString(),
         },
         {
-          id: 'cat-7',
+          id: 'yan-urun',
           name: 'Yan Ürünler',
           slug: 'yan-urun',
           icon: '🍟',
-          description: 'Patates kızartması ve diğer yan ürünler',
+          description: 'Patates, soğan halkası vb.',
           isActive: true,
           sortOrder: 7,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
         {
-          id: 'cat-8',
+          id: 'icecek',
           name: 'İçecekler',
           slug: 'icecek',
           icon: '🥤',
@@ -113,10 +115,11 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json<ApiResponse<Category[]>>({
         success: true,
-        data: sampleCategories,
+        data: mockCategories,
       });
     }
 
+    // Firebase Admin varsa gerçek data
     const snapshot = await adminDb.collection('categories').orderBy('sortOrder', 'asc').get();
     const categories = snapshot.docs.map(doc => ({
       id: doc.id,
@@ -141,18 +144,11 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authConfig) as Session | null;
     
-    if (!session || (session.user as any)?.role !== 'admin') {
+    if (!session || session.user?.role !== 'admin') {
       return NextResponse.json<ApiResponse>({
         success: false,
         error: 'Yetkisiz erişim',
       }, { status: 401 });
-    }
-
-    if (!adminDb) {
-      return NextResponse.json<ApiResponse>({
-        success: false,
-        error: 'Veritabanı bağlantısı mevcut değil',
-      }, { status: 500 });
     }
 
     const body = await request.json();
@@ -162,56 +158,42 @@ export async function POST(request: NextRequest) {
     if (!name || !slug || !icon) {
       return NextResponse.json<ApiResponse>({
         success: false,
-        error: 'Gerekli alanlar eksik (name, slug, icon)',
-      }, { status: 400 });
-    }
-
-    // Slug format validation
-    const slugRegex = /^[a-z0-9-]+$/;
-    if (!slugRegex.test(slug)) {
-      return NextResponse.json<ApiResponse>({
-        success: false,
-        error: 'Slug sadece küçük harf, rakam ve tire içerebilir',
-      }, { status: 400 });
-    }
-
-    // Check if slug already exists
-    const existingCategory = await adminDb.collection('categories').where('slug', '==', slug).get();
-    if (!existingCategory.empty) {
-      return NextResponse.json<ApiResponse>({
-        success: false,
-        error: 'Bu slug zaten kullanılıyor',
-      }, { status: 400 });
-    }
-
-    // Check if name already exists
-    const existingName = await adminDb.collection('categories').where('name', '==', name.trim()).get();
-    if (!existingName.empty) {
-      return NextResponse.json<ApiResponse>({
-        success: false,
-        error: 'Bu kategori adı zaten kullanılıyor',
+        error: 'Gerekli alanlar eksik (ad, slug, icon)',
       }, { status: 400 });
     }
 
     const categoryId = `category_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    const categoryData: Omit<Category, 'id'> = {
+    const categoryData: Category = {
+      id: categoryId,
       name: name.trim(),
       slug: slug.trim(),
       icon: icon.trim(),
       description: description?.trim() || '',
       isActive: Boolean(isActive),
-      sortOrder: parseInt(sortOrder) || 0,
+      sortOrder: sortOrder || 999,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
+    // Firebase Admin yoksa mock response
+    if (!adminDb) {
+      console.log('🔄 Kategori eklendi (Mock Mode):', categoryData.name);
+      
+      return NextResponse.json<ApiResponse<Category>>({
+        success: true,
+        message: 'Kategori başarıyla oluşturuldu (Mock Mode)',
+        data: categoryData,
+      });
+    }
+
+    // Firebase Admin varsa gerçek kayıt
     await adminDb.collection('categories').doc(categoryId).set(categoryData);
 
     return NextResponse.json<ApiResponse<Category>>({
       success: true,
       message: 'Kategori başarıyla oluşturuldu',
-      data: { id: categoryId, ...categoryData },
+      data: categoryData,
     });
 
   } catch (error) {

@@ -32,11 +32,11 @@ export const authConfig: NextAuthOptions = {
           console.warn('⚠️ Firebase Admin not available, using test credentials');
           
           // Test kullanıcısı için basit kontrol
-          if (credentials.email === 'admin@test.com' && credentials.password === 'test123') {
+          if (credentials.email === 'admin@turkid.com' && credentials.password === 'admin123') {
             return {
               id: 'test-admin',
-              email: 'admin@test.com',
-              name: 'Test Admin',
+              email: 'admin@turkid.com',
+              name: 'Admin User',
               role: 'admin',
             } as User & { role: string };
           }

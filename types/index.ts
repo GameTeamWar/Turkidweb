@@ -1,5 +1,21 @@
-// types/index.ts
+// types/index.ts - Updated imports
 
+// Product option types from admin types
+export interface ProductOption {
+  id: string;
+  name: string;
+  minSelect: number;
+  maxSelect: number;
+  choices: ProductChoice[];
+}
+
+export interface ProductChoice {
+  id: string;
+  name: string;
+  price?: number; // Ek ücret
+}
+
+// Updated Product interface
 export interface Product {
   id: string;
   name: string;
@@ -11,19 +27,11 @@ export interface Product {
   discount: number;
   tags: string[];
   hasOptions: boolean;
+  options: ProductOption[]; // Yeni eklenen
+  stock?: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface ProductOption {
-  id: string;
-  productId: string;
-  type: 'spice' | 'sauce' | 'size' | 'extra';
-  name: string;
-  options: string[];
-  required: boolean;
-  maxSelections: number;
 }
 
 export interface CartItem extends Product {
@@ -72,6 +80,7 @@ export interface Address {
 
 export interface Order {
   id: string;
+  orderNumber: string;
   userId: string;
   userEmail: string;
   userName: string;
@@ -79,9 +88,11 @@ export interface Order {
   subtotal: number;
   tax: number;
   total: number;
-  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'out_for_delivery' | 'delivered' | 'cancelled';
   paymentMethod: 'card' | 'cash' | 'online';
+  paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
   orderNote?: string;
+  adminNote?: string;
   address?: Address;
   phone?: string;
   estimatedDeliveryTime?: string;
@@ -146,6 +157,32 @@ export interface ApiResponse<T = any> {
   data?: T;
   message?: string;
   error?: string;
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+}
+
+// Filter types
+export interface ProductFilters {
+  search: string;
+  category: string;
+  isActive?: boolean;
+  hasStock?: boolean;
+  hasDiscount?: boolean;
+  sortBy: string;
+  sortOrder: 'asc' | 'desc';
+}
+
+export interface OrderFilters {
+  search: string;
+  status?: Order['status'];
+  paymentStatus?: Order['paymentStatus'];
+  paymentMethod?: Order['paymentMethod'];
+  dateFrom: string;
+  dateTo: string;
 }
 
 // Form types
@@ -167,14 +204,19 @@ export interface ProductForm {
   price: number;
   originalPrice?: number;
   category: string;
+  image: string;
   tags: string[];
   hasOptions: boolean;
+  options: ProductOption[];
+  stock?: number;
   isActive: boolean;
 }
 
 export interface OrderForm {
   paymentMethod: 'card' | 'cash' | 'online';
   orderNote?: string;
-  address?: Address;
+  address?: {
+    fullAddress: string;
+  };
   phone?: string;
 }

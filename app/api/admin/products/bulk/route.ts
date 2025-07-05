@@ -1,12 +1,66 @@
-// app/api/admin/products/bulk/route.ts
+// app/api/admin/products/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getServerSession } from 'next-auth/next';
 import { authConfig } from '@/lib/auth';
-import { ApiResponse } from '@/types';
+import { ApiResponse, Product } from '@/types';
 import type { Session } from 'next-auth';
 
-export async function POST(request: NextRequest) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authConfig) as Session | null;
+    
+    if (!session || (session.user as any)?.role !== 'admin') {
+      return NextResponse.json<ApiResponse>({
+        success: false,
+        error: 'Yetkisiz erişim',
+      }, { status: 401 });
+    }
+
+    if (!adminDb) {
+      return NextResponse.json<ApiResponse>({
+        success: false,
+        error: 'Veritabanı bağlantısı mevcut değil',
+      }, { status: 500 });
+    }
+
+    const productDoc = await adminDb.collection('products').doc(params.id).get();
+    
+    if (!productDoc.exists) {
+      return NextResponse.json<ApiResponse>({
+        success: false,
+        error: 'Ürün bulunamadı',
+      }, { status: 404 });
+    }
+
+    const productData = productDoc.data();
+    const product = {
+      id: productDoc.id,
+      ...productData,
+      tags: Array.isArray(productData?.tags) ? productData.tags : [],
+    } as Product;
+
+    return NextResponse.json<ApiResponse<Product>>({
+      success: true,
+      data: product,
+    });
+
+  } catch (error) {
+    console.error('Get product error:', error);
+    return NextResponse.json<ApiResponse>({
+      success: false,
+      error: 'Ürün yüklenirken bir hata oluştu',
+    }, { status: 500 });
+  }
+}
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
     const session = await getServerSession(authConfig) as Session | null;
     
@@ -25,184 +79,185 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { productIds, action, data } = body;
-
-    console.log('🔍 Bulk operation:', { productIds, action, data });
-
-    if (!Array.isArray(productIds) || productIds.length === 0) {
+    
+    // Mevcut ürünü kontrol et
+    const productDoc = await adminDb.collection('products').doc(params.id).get();
+    
+    if (!productDoc.exists) {
       return NextResponse.json<ApiResponse>({
         success: false,
-        error: 'Geçerli ürün ID\'leri gerekli',
-      }, { status: 400 });
+        error: 'Ürün bulunamadı',
+      }, { status: 404 });
     }
 
-    if (!action) {
-      return NextResponse.json<ApiResponse>({
-        success: false,
-        error: 'İşlem türü gerekli',
-      }, { status: 400 });
+    const currentData = productDoc.data();
+
+    // Güncelleme verilerini hazırla
+    const updateData: any = {
+      ...body,
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Eğer ad değiştiriliyorsa, aynı isimde başka ürün var mı kontrol et
+    if (body.name && body.name !== currentData?.name) {
+      const existingProductQuery = await adminDb
+        .collection('products')
+        .where('name', '==', body.name.trim())
+        .get();
+
+      if (!existingProductQuery.empty) {
+        // Mevcut ürün dışında aynı isimde ürün var mı?
+        const conflictingProduct = existingProductQuery.docs.find(doc => doc.id !== params.id);
+        if (conflictingProduct) {
+          return NextResponse.json<ApiResponse>({
+            success: false,
+            error: 'Bu isimde başka bir ürün zaten mevcut',
+          }, { status: 400 });
+        }
+      }
+
+      updateData.name = body.name.trim();
     }
 
-    const batch = adminDb.batch();
-    const timestamp = new Date().toISOString();
+    // Fiyat validasyonu ve indirim hesaplama
+    if (body.price || body.originalPrice !== undefined) {
+      const newPrice = body.price ? parseFloat(body.price.toString()) : currentData?.price;
+      const newOriginalPrice = body.originalPrice !== undefined ? 
+        (body.originalPrice ? parseFloat(body.originalPrice.toString()) : undefined) : 
+        currentData?.originalPrice;
 
-    switch (action) {
-      case 'activate':
-        productIds.forEach((productId: string) => {
-          const productRef = adminDb.collection('products').doc(productId);
-          batch.update(productRef, {
-            isActive: true,
-            updatedAt: timestamp,
-          });
-        });
-        break;
-
-      case 'deactivate':
-        productIds.forEach((productId: string) => {
-          const productRef = adminDb.collection('products').doc(productId);
-          batch.update(productRef, {
-            isActive: false,
-            updatedAt: timestamp,
-          });
-        });
-        break;
-
-      case 'delete':
-        // Önce aktif siparişlerde kullanılıp kullanılmadığını kontrol et
-        const activeOrdersQuery = await adminDb
-          .collection('orders')
-          .where('status', 'in', ['pending', 'confirmed', 'preparing', 'ready'])
-          .get();
-
-        const productsInActiveOrders = new Set<string>();
-        activeOrdersQuery.docs.forEach(doc => {
-          const orderData = doc.data();
-          if (orderData.items) {
-            orderData.items.forEach((item: any) => {
-              if (productIds.includes(item.id)) {
-                productsInActiveOrders.add(item.id);
-              }
-            });
-          }
-        });
-
-        if (productsInActiveOrders.size > 0) {
-          return NextResponse.json<ApiResponse>({
-            success: false,
-            error: `${productsInActiveOrders.size} ürün aktif siparişlerde kullanıldığı için silinemez`,
-          }, { status: 400 });
-        }
-
-        productIds.forEach((productId: string) => {
-          const productRef = adminDb.collection('products').doc(productId);
-          batch.delete(productRef);
-        });
-        break;
-
-      case 'addDiscount':
-        if (!data?.percentage || data.percentage <= 0 || data.percentage >= 100) {
-          return NextResponse.json<ApiResponse>({
-            success: false,
-            error: 'Geçerli bir indirim yüzdesi gerekli (1-99)',
-          }, { status: 400 });
-        }
-
-        // Önce mevcut ürünleri al
-        const productDocs = await Promise.all(
-          productIds.map((id: string) => adminDb.collection('products').doc(id).get())
-        );
-
-        productDocs.forEach((doc, index) => {
-          if (doc.exists) {
-            const currentData = doc.data();
-            const currentPrice = currentData?.price || 0;
-            const discountPercentage = data.percentage;
-            const originalPrice = currentData?.originalPrice || currentPrice;
-            const newPrice = originalPrice * (1 - discountPercentage / 100);
-
-            const productRef = adminDb.collection('products').doc(productIds[index]);
-            batch.update(productRef, {
-              price: Math.round(newPrice * 100) / 100, // 2 decimal places
-              originalPrice: originalPrice,
-              discount: discountPercentage,
-              updatedAt: timestamp,
-            });
-          }
-        });
-        break;
-
-      case 'removeDiscount':
-        // Önce mevcut ürünleri al
-        const productDocsForDiscount = await Promise.all(
-          productIds.map((id: string) => adminDb.collection('products').doc(id).get())
-        );
-
-        productDocsForDiscount.forEach((doc, index) => {
-          if (doc.exists) {
-            const currentData = doc.data();
-            const originalPrice = currentData?.originalPrice;
-
-            if (originalPrice) {
-              const productRef = adminDb.collection('products').doc(productIds[index]);
-              batch.update(productRef, {
-                price: originalPrice,
-                originalPrice: null,
-                discount: 0,
-                updatedAt: timestamp,
-              });
-            }
-          }
-        });
-        break;
-
-      default:
+      if (newPrice <= 0) {
         return NextResponse.json<ApiResponse>({
           success: false,
-          error: 'Geçersiz işlem türü',
+          error: 'Fiyat 0\'dan büyük olmalıdır',
         }, { status: 400 });
+      }
+
+      if (newOriginalPrice && newOriginalPrice <= 0) {
+        return NextResponse.json<ApiResponse>({
+          success: false,
+          error: 'Orijinal fiyat 0\'dan büyük olmalıdır',
+        }, { status: 400 });
+      }
+
+      updateData.price = newPrice;
+      updateData.originalPrice = newOriginalPrice;
+
+      // İndirim hesapla
+      if (newOriginalPrice && newPrice && newOriginalPrice > newPrice) {
+        updateData.discount = Math.round(((newOriginalPrice - newPrice) / newOriginalPrice) * 100);
+      } else {
+        updateData.discount = 0;
+      }
     }
 
-    // Batch işlemini gerçekleştir
-    await batch.commit();
-
-    console.log('✅ Bulk operation completed successfully');
-
-    // İşlem mesajını belirle
-    let message = '';
-    switch (action) {
-      case 'activate':
-        message = `${productIds.length} ürün aktif edildi`;
-        break;
-      case 'deactivate':
-        message = `${productIds.length} ürün pasif edildi`;
-        break;
-      case 'delete':
-        message = `${productIds.length} ürün silindi`;
-        break;
-      case 'addDiscount':
-        message = `${productIds.length} ürüne %${data.percentage} indirim uygulandı`;
-        break;
-      case 'removeDiscount':
-        message = `${productIds.length} üründen indirim kaldırıldı`;
-        break;
-      default:
-        message = `${productIds.length} ürün güncellendi`;
+    // Stok validasyonu
+    if (body.stock !== undefined) {
+      if (body.stock !== null && body.stock < 0) {
+        return NextResponse.json<ApiResponse>({
+          success: false,
+          error: 'Stok miktarı 0\'dan küçük olamaz',
+        }, { status: 400 });
+      }
+      updateData.stock = body.stock ? parseInt(body.stock.toString()) : undefined;
     }
 
-    return NextResponse.json<ApiResponse>({
+    // Tags array olduğunu garanti et
+    if (body.tags !== undefined) {
+      updateData.tags = Array.isArray(body.tags) ? body.tags : [];
+    }
+
+    await adminDb.collection('products').doc(params.id).update(updateData);
+
+    // Güncellenmiş ürünü getir
+    const updatedDoc = await adminDb.collection('products').doc(params.id).get();
+    const updatedData = updatedDoc.data();
+    const updatedProduct = {
+      id: updatedDoc.id,
+      ...updatedData,
+      tags: Array.isArray(updatedData?.tags) ? updatedData.tags : [],
+    } as Product;
+
+    return NextResponse.json<ApiResponse<Product>>({
       success: true,
-      message,
-      data: {
-        processedCount: productIds.length,
-        action,
-      },
+      message: 'Ürün başarıyla güncellendi',
+      data: updatedProduct,
     });
 
   } catch (error) {
-    console.error('❌ Bulk operation error:', error);
+    console.error('Update product error:', error);
     return NextResponse.json<ApiResponse>({
       success: false,
-      error: 'Toplu işlem sırasında bir hata oluştu',
+      error: 'Ürün güncellenirken bir hata oluştu',
+    }, { status: 500 });
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authConfig) as Session | null;
+    
+    if (!session || (session.user as any)?.role !== 'admin') {
+      return NextResponse.json<ApiResponse>({
+        success: false,
+        error: 'Yetkisiz erişim',
+      }, { status: 401 });
+    }
+
+    if (!adminDb) {
+      return NextResponse.json<ApiResponse>({
+        success: false,
+        error: 'Veritabanı bağlantısı mevcut değil',
+      }, { status: 500 });
+    }
+
+    // Ürünün var olup olmadığını kontrol et
+    const productDoc = await adminDb.collection('products').doc(params.id).get();
+    
+    if (!productDoc.exists) {
+      return NextResponse.json<ApiResponse>({
+        success: false,
+        error: 'Ürün bulunamadı',
+      }, { status: 404 });
+    }
+
+    // Ürünün aktif siparişlerde kullanılıp kullanılmadığını kontrol et
+    const activeOrdersQuery = await adminDb
+      .collection('orders')
+      .where('status', 'in', ['pending', 'confirmed', 'preparing', 'ready'])
+      .get();
+
+    let hasActiveOrders = false;
+    activeOrdersQuery.docs.forEach(doc => {
+      const orderData = doc.data();
+      if (orderData.items && orderData.items.some((item: any) => item.id === params.id)) {
+        hasActiveOrders = true;
+      }
+    });
+
+    if (hasActiveOrders) {
+      return NextResponse.json<ApiResponse>({
+        success: false,
+        error: 'Bu ürün aktif siparişlerde kullanıldığı için silinemez. Ürünü pasif duruma getirebilirsiniz.',
+      }, { status: 400 });
+    }
+
+    // Ürünü sil
+    await adminDb.collection('products').doc(params.id).delete();
+
+    return NextResponse.json<ApiResponse>({
+      success: true,
+      message: 'Ürün başarıyla silindi',
+    });
+
+  } catch (error) {
+    console.error('Delete product error:', error);
+    return NextResponse.json<ApiResponse>({
+      success: false,
+      error: 'Ürün silinirken bir hata oluştu',
     }, { status: 500 });
   }
 }
