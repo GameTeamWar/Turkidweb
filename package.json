@@ -9,7 +9,7 @@
     "lint": "next lint",
     "type-check": "tsc --noEmit",
     "firebase:emulators": "firebase emulators:start",
-    "seed": "node scripts/seed.js"
+    "seed": "node scripts/seed-firestore.js"
   },
   "dependencies": {
     "@google-cloud/firestore": "^7.1.0",
@@ -20,6 +20,7 @@
     "@tailwindcss/forms": "^0.5.7",
     "bcryptjs": "^2.4.3",
     "date-fns": "^3.2.0",
+    "dotenv": "^17.0.1",
     "firebase": "^10.7.2",
     "firebase-admin": "^12.0.0",
     "framer-motion": "^10.18.0",

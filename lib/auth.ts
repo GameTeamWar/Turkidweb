@@ -8,10 +8,14 @@ import type { User } from 'next-auth';
 
 export const authConfig: NextAuthOptions = {
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
+    // Google Provider - sadece credentials varsa ekle
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET ? [
+      GoogleProvider({
+        clientId: process.env.GOOGLE_CLIENT_ID,
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+      })
+    ] : []),
+    
     CredentialsProvider({
       name: 'credentials',
       credentials: {
@@ -20,6 +24,32 @@ export const authConfig: NextAuthOptions = {
       },
       async authorize(credentials): Promise<User | null> {
         if (!credentials?.email || !credentials?.password) {
+          return null;
+        }
+
+        // Firebase Admin SDK yoksa basit test kullanıcısı döndür
+        if (!adminDb) {
+          console.warn('⚠️ Firebase Admin not available, using test credentials');
+          
+          // Test kullanıcısı için basit kontrol
+          if (credentials.email === 'admin@test.com' && credentials.password === 'test123') {
+            return {
+              id: 'test-admin',
+              email: 'admin@test.com',
+              name: 'Test Admin',
+              role: 'admin',
+            } as User & { role: string };
+          }
+          
+          if (credentials.email === 'user@test.com' && credentials.password === 'test123') {
+            return {
+              id: 'test-user',
+              email: 'user@test.com',
+              name: 'Test User',
+              role: 'user',
+            } as User & { role: string };
+          }
+          
           return null;
         }
 
@@ -65,6 +95,12 @@ export const authConfig: NextAuthOptions = {
   callbacks: {
     async signIn({ user, account }) {
       if (account?.provider === 'google') {
+        // Firebase Admin yoksa Google OAuth'u atla
+        if (!adminDb) {
+          console.warn('⚠️ Firebase Admin not available, skipping Google user save');
+          return true;
+        }
+
         try {
           const email = user.email;
           if (!email) return false;
@@ -108,6 +144,12 @@ export const authConfig: NextAuthOptions = {
       }
       
       if (account?.provider === 'google' || account?.provider === 'credentials') {
+        // Firebase Admin yoksa default role ver
+        if (!adminDb) {
+          token.role = token.email === process.env.ADMIN_EMAIL ? 'admin' : 'user';
+          return token;
+        }
+
         try {
           const email = token.email;
           if (email) {
@@ -119,6 +161,7 @@ export const authConfig: NextAuthOptions = {
           }
         } catch (error) {
           console.error('Error fetching user role:', error);
+          token.role = 'user';
         }
       }
       
