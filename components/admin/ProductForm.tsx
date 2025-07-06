@@ -212,7 +212,29 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
         body: JSON.stringify(formData),
       });
 
-      const result = await response.json();
+      // Response'u kontrol et
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // Response'un content-type'ını kontrol et
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        const textResponse = await response.text();
+        console.error('Non-JSON response:', textResponse);
+        throw new Error('Server JSON formatında response döndürmedi');
+      }
+
+      // JSON parse et
+      let result;
+      try {
+        result = await response.json();
+      } catch (jsonError) {
+        console.error('JSON parse error:', jsonError);
+        const textResponse = await response.text();
+        console.error('Raw response:', textResponse);
+        throw new Error('Response JSON formatında parse edilemedi');
+      }
 
       if (result.success) {
         toast.success(productId ? 'Ürün güncellendi!' : 'Ürün eklendi!');
@@ -222,7 +244,15 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
       }
     } catch (error) {
       console.error('Submit error:', error);
-      toast.error('Bir hata oluştu');
+      
+      // Hata tipine göre farklı mesajlar
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        toast.error('Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin.');
+      } else if (error.message.includes('JSON')) {
+        toast.error('Sunucu yanıtı işlenirken hata oluştu');
+      } else {
+        toast.error('Bir hata oluştu: ' + error.message);
+      }
     } finally {
       setLoading(false);
     }

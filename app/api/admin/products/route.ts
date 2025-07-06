@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
           discount: 13,
           tags: ['popular'],
           hasOptions: true,
+          options: [], // Eksik olan property eklendi
           stock: 50,
           isActive: true,
           createdAt: new Date().toISOString(),
@@ -51,28 +52,32 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get('sortBy') || 'createdAt';
     const sortOrder = searchParams.get('sortOrder') || 'desc';
 
-    let query = adminDb.collection('products');
+    // Query builder - tip güvenli şekilde
+    const buildQuery = () => {
+      let queryBuilder: any = adminDb.collection('products');
 
-    // Filtreleri uygula
-    if (category && category !== 'all') {
-      query = query.where('category', '==', category);
-    }
+      // Filtreleri uygula
+      if (category && category !== 'all') {
+        queryBuilder = queryBuilder.where('category', '==', category);
+      }
 
-    if (isActive !== null && isActive !== undefined) {
-      query = query.where('isActive', '==', isActive === 'true');
-    }
+      if (isActive !== null && isActive !== undefined) {
+        queryBuilder = queryBuilder.where('isActive', '==', isActive === 'true');
+      }
 
-    // Sıralama
-    const orderDirection = sortOrder === 'asc' ? 'asc' : 'desc';
-    query = query.orderBy(sortBy, orderDirection);
+      // Sıralama
+      const orderDirection = sortOrder === 'asc' ? 'asc' : 'desc';
+      return queryBuilder.orderBy(sortBy, orderDirection);
+    };
 
-    const snapshot = await query.get();
+    const snapshot = await buildQuery().get();
     let products = snapshot.docs.map(doc => {
       const data = doc.data();
       return {
         id: doc.id,
         ...data,
         tags: Array.isArray(data.tags) ? data.tags : [],
+        options: Array.isArray(data.options) ? data.options : [], // options property'sini de garanti et
       };
     }) as Product[];
 

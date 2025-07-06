@@ -33,6 +33,7 @@ export async function GET(
         discount: 13,
         tags: ['popular'],
         hasOptions: true,
+        options: [],
         isActive: true,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
@@ -53,9 +54,12 @@ export async function GET(
       }, { status: 404 });
     }
 
+    const productData = productDoc.data();
     const product = {
       id: productDoc.id,
-      ...productDoc.data(),
+      ...productData,
+      tags: Array.isArray(productData?.tags) ? productData.tags : [],
+      options: Array.isArray(productData?.options) ? productData.options : [],
     } as Product;
 
     return NextResponse.json<ApiResponse<Product>>({
@@ -68,6 +72,148 @@ export async function GET(
     return NextResponse.json<ApiResponse>({
       success: false,
       error: 'Ürün yüklenirken bir hata oluştu',
+    }, { status: 500 });
+  }
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authConfig) as Session | null;
+    
+    if (!session || (session.user as any)?.role !== 'admin') {
+      return NextResponse.json<ApiResponse>({
+        success: false,
+        error: 'Yetkisiz erişim',
+      }, { status: 401 });
+    }
+
+    if (!adminDb) {
+      return NextResponse.json<ApiResponse>({
+        success: false,
+        error: 'Veritabanı bağlantısı mevcut değil',
+      }, { status: 500 });
+    }
+
+    const body = await request.json();
+    
+    // Mevcut ürünü kontrol et
+    const productDoc = await adminDb.collection('products').doc(params.id).get();
+    
+    if (!productDoc.exists) {
+      return NextResponse.json<ApiResponse>({
+        success: false,
+        error: 'Ürün bulunamadı',
+      }, { status: 404 });
+    }
+
+    const currentData = productDoc.data();
+
+    // Güncellenecek alanları hazırla
+    const updateData: any = {
+      ...body,
+      updatedAt: new Date().toISOString(),
+    };
+
+    // Eğer ad değiştiriliyorsa, aynı isimde başka ürün var mı kontrol et
+    if (body.name && body.name !== currentData?.name) {
+      const existingProductQuery = await adminDb
+        .collection('products')
+        .where('name', '==', body.name.trim())
+        .get();
+
+      if (!existingProductQuery.empty) {
+        // Mevcut ürün dışında aynı isimde ürün var mı?
+        const conflictingProduct = existingProductQuery.docs.find(doc => doc.id !== params.id);
+        if (conflictingProduct) {
+          return NextResponse.json<ApiResponse>({
+            success: false,
+            error: 'Bu isimde başka bir ürün zaten mevcut',
+          }, { status: 400 });
+        }
+      }
+
+      updateData.name = body.name.trim();
+    }
+
+    // Fiyat validasyonu ve indirim hesaplama
+    if (body.price || body.originalPrice !== undefined) {
+      const newPrice = body.price ? parseFloat(body.price.toString()) : currentData?.price;
+      const newOriginalPrice = body.originalPrice !== undefined ? 
+        (body.originalPrice ? parseFloat(body.originalPrice.toString()) : undefined) : 
+        currentData?.originalPrice;
+
+      if (newPrice <= 0) {
+        return NextResponse.json<ApiResponse>({
+          success: false,
+          error: 'Fiyat 0\'dan büyük olmalıdır',
+        }, { status: 400 });
+      }
+
+      if (newOriginalPrice && newOriginalPrice <= 0) {
+        return NextResponse.json<ApiResponse>({
+          success: false,
+          error: 'Orijinal fiyat 0\'dan büyük olmalıdır',
+        }, { status: 400 });
+      }
+
+      updateData.price = newPrice;
+      updateData.originalPrice = newOriginalPrice;
+
+      // İndirim hesapla
+      if (newOriginalPrice && newPrice && newOriginalPrice > newPrice) {
+        updateData.discount = Math.round(((newOriginalPrice - newPrice) / newOriginalPrice) * 100);
+      } else {
+        updateData.discount = 0;
+      }
+    }
+
+    // Stok validasyonu
+    if (body.stock !== undefined) {
+      if (body.stock !== null && body.stock < 0) {
+        return NextResponse.json<ApiResponse>({
+          success: false,
+          error: 'Stok miktarı 0\'dan küçük olamaz',
+        }, { status: 400 });
+      }
+      updateData.stock = body.stock ? parseInt(body.stock.toString()) : undefined;
+    }
+
+    // Tags array olduğunu garanti et
+    if (body.tags !== undefined) {
+      updateData.tags = Array.isArray(body.tags) ? body.tags : [];
+    }
+
+    // Options array olduğunu garanti et
+    if (body.options !== undefined) {
+      updateData.options = Array.isArray(body.options) ? body.options : [];
+    }
+
+    await adminDb.collection('products').doc(params.id).update(updateData);
+
+    // Güncellenmiş ürünü getir
+    const updatedDoc = await adminDb.collection('products').doc(params.id).get();
+    const updatedData = updatedDoc.data();
+    const updatedProduct = {
+      id: updatedDoc.id,
+      ...updatedData,
+      tags: Array.isArray(updatedData?.tags) ? updatedData.tags : [],
+      options: Array.isArray(updatedData?.options) ? updatedData.options : [],
+    } as Product;
+
+    return NextResponse.json<ApiResponse<Product>>({
+      success: true,
+      message: 'Ürün başarıyla güncellendi',
+      data: updatedProduct,
+    });
+
+  } catch (error) {
+    console.error('Update product error:', error);
+    return NextResponse.json<ApiResponse>({
+      success: false,
+      error: 'Ürün güncellenirken bir hata oluştu',
     }, { status: 500 });
   }
 }
@@ -135,9 +281,12 @@ export async function PATCH(
 
     // Güncellenmiş ürünü getir
     const updatedDoc = await adminDb.collection('products').doc(params.id).get();
+    const updatedData = updatedDoc.data();
     const updatedProduct = {
       id: updatedDoc.id,
-      ...updatedDoc.data(),
+      ...updatedData,
+      tags: Array.isArray(updatedData?.tags) ? updatedData.tags : [],
+      options: Array.isArray(updatedData?.options) ? updatedData.options : [],
     } as Product;
 
     return NextResponse.json<ApiResponse<Product>>({
@@ -203,7 +352,7 @@ export async function DELETE(
     if (hasActiveOrders) {
       return NextResponse.json<ApiResponse>({
         success: false,
-        error: 'Bu ürün aktif siparişlerde kullanıldığı için silinemez. Önce ürünü pasif duruma getirebilirsiniz.',
+        error: 'Bu ürün aktif siparişlerde kullanıldığı için silinemez. Ürünü pasif duruma getirebilirsiniz.',
       }, { status: 400 });
     }
 
