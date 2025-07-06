@@ -108,7 +108,7 @@ export default function TagsPage() {
             isActive: action === 'activate' ? true : false 
           }),
         })
-    }
+      );
 
       await Promise.all(promises);
       toast.success(`${selectedTags.length} etiket başarıyla güncellendi`);
@@ -609,3 +609,4 @@ function TagModal({ tag, onSave, onClose }: TagModalProps) {
       </div>
     </div>
   );
+}

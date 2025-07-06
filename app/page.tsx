@@ -1,4 +1,4 @@
-// app/page.tsx
+// app/page.tsx - Kategori filtreleme düzeltildi
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -79,6 +79,8 @@ export default function HomePage() {
       const result = await response.json();
       
       if (result.success) {
+        console.log('📦 Fetched products:', result.data);
+        console.log('🔍 Current category:', currentCategory);
         setProducts(result.data);
       } else {
         toast.error('Ürünler yüklenirken hata oluştu');
@@ -92,34 +94,61 @@ export default function HomePage() {
   };
 
   const filteredProducts = products.filter(product => {
-    // Kategori filtresi - populer kategorisi için özel mantık
+    console.log('🔍 Filtering product:', {
+      name: product.name,
+      categories: product.categories,
+      category: product.category,
+      currentCategory,
+      tags: product.tags
+    });
+
+    // Kategori filtresi - güncellenmiş mantık
     if (currentCategory === 'populer') {
       // Popüler etiketine sahip ürünleri göster
-      if (!product.tags.includes('populer') && !product.tags.includes('popular')) {
+      const hasPopularTag = product.tags.includes('populer') || 
+                           product.tags.includes('popular') || 
+                           product.tags.includes('cok-satan');
+      if (!hasPopularTag) {
+        console.log('❌ Product filtered out - not popular');
         return false;
       }
     } else {
-      // Seçili kategoriye ait ürünleri göster
-      if (product.category !== currentCategory) {
+      // Seçili kategoriye ait ürünleri göster - hem categories array hem de category string kontrol et
+      const isInCategory = (product.categories && product.categories.includes(currentCategory)) ||
+                          (product.category === currentCategory);
+      if (!isInCategory) {
+        console.log('❌ Product filtered out - not in category');
         return false;
       }
     }
     
     // Diğer filtreler
     if (filters.vegetarian && !product.tags.includes('vejetaryen')) {
+      console.log('❌ Product filtered out - not vegetarian');
       return false;
     }
     if (filters.spicy && !product.tags.includes('acili')) {
+      console.log('❌ Product filtered out - not spicy');
       return false;
     }
     if (filters.discount && product.discount === 0) {
+      console.log('❌ Product filtered out - no discount');
       return false;
     }
-    if (filters.popular && !product.tags.includes('populer') && !product.tags.includes('popular')) {
+    if (filters.popular && !product.tags.includes('populer') && !product.tags.includes('popular') && !product.tags.includes('cok-satan')) {
+      console.log('❌ Product filtered out - not in popular filter');
       return false;
     }
     
+    console.log('✅ Product passed all filters');
     return true;
+  });
+
+  console.log('📊 Filter results:', {
+    totalProducts: products.length,
+    filteredProducts: filteredProducts.length,
+    currentCategory,
+    filters
   });
 
   const handleAddToCart = (product: Product, options?: Record<string, string>) => {
@@ -160,6 +189,9 @@ export default function HomePage() {
             {currentCategory === 'populer' && (
               <p className="text-white/80 mt-2">En çok tercih edilen lezzetlerimiz</p>
             )}
+            <p className="text-white/60 text-sm mt-1">
+              {filteredProducts.length} ürün bulundu
+            </p>
           </div>
 
           {loading ? (
@@ -171,8 +203,16 @@ export default function HomePage() {
               <div className="text-6xl mb-4">🍽️</div>
               <div>Bu kategoride ürün bulunamadı</div>
               <p className="text-white/60 mt-2">
-                Lütfen başka bir kategori seçin veya filtreleri kontrol edin
+                Kategori: {currentCategory} - Lütfen başka bir kategori seçin veya filtreleri kontrol edin
               </p>
+              {process.env.NODE_ENV === 'development' && (
+                <div className="mt-4 p-4 bg-white/10 rounded-lg text-left max-w-md mx-auto">
+                  <p className="text-xs text-white/80">Debug Info:</p>
+                  <p className="text-xs text-white/60">Total products: {products.length}</p>
+                  <p className="text-xs text-white/60">Current category: {currentCategory}</p>
+                  <p className="text-xs text-white/60">Active filters: {Object.entries(filters).filter(([k,v]) => v).map(([k]) => k).join(', ') || 'none'}</p>
+                </div>
+              )}
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
