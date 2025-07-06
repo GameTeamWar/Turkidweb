@@ -14,26 +14,15 @@ import { CartBadge } from '@/components/CartBadge';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import toast, { Toaster } from 'react-hot-toast';
 
-const categories: Category[] = [
-  { id: 'all', name: 'Popüler Ürünler', slug: 'all', icon: '🔥', isActive: true, sortOrder: 0 },
-  { id: 'et-burger', name: 'Et Burger', slug: 'et-burger', icon: '🍔', isActive: true, sortOrder: 1 },
-  { id: 'tavuk-burger', name: 'Tavuk Burger', slug: 'tavuk-burger', icon: '🐔', isActive: true, sortOrder: 2 },
-  { id: 'izmir-kumru', name: 'İzmir Kumru', slug: 'izmir-kumru', icon: '🥖', isActive: true, sortOrder: 3 },
-  { id: 'doner', name: 'Dönerler', slug: 'doner', icon: '🌯', isActive: true, sortOrder: 4 },
-  { id: 'sandwich', name: 'Sandwiçler', slug: 'sandwich', icon: '🥪', isActive: true, sortOrder: 5 },
-  { id: 'tost', name: 'Tostlar', slug: 'tost', icon: '🍞', isActive: true, sortOrder: 6 },
-  { id: 'yan-urun', name: 'Yan Ürünler', slug: 'yan-urun', icon: '🍟', isActive: true, sortOrder: 7 },
-  { id: 'icecek', name: 'İçecekler', slug: 'icecek', icon: '🥤', isActive: true, sortOrder: 8 },
-];
-
 export default function HomePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const addItem = useCartStore((state) => state.addItem);
   
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-  const [currentCategory, setCurrentCategory] = useState('all');
+  const [currentCategory, setCurrentCategory] = useState('populer');
   const [filters, setFilters] = useState<Filters>({
     vegetarian: false,
     spicy: false,
@@ -43,8 +32,45 @@ export default function HomePage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
+    fetchCategories();
     fetchProducts();
   }, [currentCategory]);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('/api/admin/categories');
+      const result = await response.json();
+      
+      if (result.success) {
+        // Admin kategorilerini kullanıcı kategorilerine dönüştür
+        const userCategories = result.data
+          .filter((cat: any) => cat.isActive)
+          .sort((a: any, b: any) => a.sortOrder - b.sortOrder)
+          .map((cat: any) => ({
+            id: cat.slug,
+            name: cat.name,
+            slug: cat.slug,
+            icon: cat.icon,
+            isActive: cat.isActive,
+            sortOrder: cat.sortOrder
+          }));
+        
+        // Popüler kategorisini başa ekle
+        const popularCategory = {
+          id: 'populer',
+          name: 'Popüler Ürünler',
+          slug: 'populer',
+          icon: '🔥',
+          isActive: true,
+          sortOrder: 0
+        };
+        
+        setCategories([popularCategory, ...userCategories]);
+      }
+    } catch (error) {
+      console.error('Fetch categories error:', error);
+    }
+  };
 
   const fetchProducts = async () => {
     try {
@@ -66,24 +92,30 @@ export default function HomePage() {
   };
 
   const filteredProducts = products.filter(product => {
-    // Category filter - show popular items when "all" is selected
-    if (currentCategory === 'all') {
-      if (!product.tags.includes('popular') || product.category === 'icecek') {
+    // Kategori filtresi - populer kategorisi için özel mantık
+    if (currentCategory === 'populer') {
+      // Popüler etiketine sahip ürünleri göster
+      if (!product.tags.includes('populer') && !product.tags.includes('popular')) {
+        return false;
+      }
+    } else {
+      // Seçili kategoriye ait ürünleri göster
+      if (product.category !== currentCategory) {
         return false;
       }
     }
     
-    // Other filters
-    if (filters.vegetarian && !product.tags.includes('vegetarian')) {
+    // Diğer filtreler
+    if (filters.vegetarian && !product.tags.includes('vejetaryen')) {
       return false;
     }
-    if (filters.spicy && !product.tags.includes('spicy')) {
+    if (filters.spicy && !product.tags.includes('acili')) {
       return false;
     }
     if (filters.discount && product.discount === 0) {
       return false;
     }
-    if (filters.popular && !product.tags.includes('popular')) {
+    if (filters.popular && !product.tags.includes('populer') && !product.tags.includes('popular')) {
       return false;
     }
     
@@ -125,6 +157,9 @@ export default function HomePage() {
             <h1 className="text-white text-3xl font-bold">
               {getCategoryTitle(currentCategory)}
             </h1>
+            {currentCategory === 'populer' && (
+              <p className="text-white/80 mt-2">En çok tercih edilen lezzetlerimiz</p>
+            )}
           </div>
 
           {loading ? (
@@ -134,7 +169,10 @@ export default function HomePage() {
           ) : filteredProducts.length === 0 ? (
             <div className="col-span-full text-center text-white text-lg py-12">
               <div className="text-6xl mb-4">🍽️</div>
-              <div>Ürün bulunamadı</div>
+              <div>Bu kategoride ürün bulunamadı</div>
+              <p className="text-white/60 mt-2">
+                Lütfen başka bir kategori seçin veya filtreleri kontrol edin
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">

@@ -29,9 +29,9 @@ export async function GET(
         price: 45.90,
         originalPrice: 52.90,
         image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop',
-        category: 'et-burger',
+        categories: ['et-burger', 'populer'],
         discount: 13,
-        tags: ['popular'],
+        tags: ['populer'],
         hasOptions: true,
         options: [],
         isActive: true,
@@ -58,6 +58,8 @@ export async function GET(
     const product = {
       id: productDoc.id,
       ...productData,
+      // Eski category alanını categories array'ine çevir
+      categories: productData?.categories || (productData?.category ? [productData.category] : []),
       tags: Array.isArray(productData?.tags) ? productData.tags : [],
       options: Array.isArray(productData?.options) ? productData.options : [],
     } as Product;
@@ -138,6 +140,18 @@ export async function PUT(
       updateData.name = body.name.trim();
     }
 
+    // Kategoriler validasyonu
+    if (body.categories && Array.isArray(body.categories)) {
+      if (body.categories.length === 0) {
+        return NextResponse.json<ApiResponse>({
+          success: false,
+          error: 'En az bir kategori seçmelisiniz',
+        }, { status: 400 });
+      }
+      updateData.categories = body.categories;
+      updateData.category = body.categories[0]; // Geriye uyumluluk için
+    }
+
     // Fiyat validasyonu ve indirim hesaplama
     if (body.price || body.originalPrice !== undefined) {
       const newPrice = body.price ? parseFloat(body.price.toString()) : currentData?.price;
@@ -199,6 +213,7 @@ export async function PUT(
     const updatedProduct = {
       id: updatedDoc.id,
       ...updatedData,
+      categories: updatedData?.categories || (updatedData?.category ? [updatedData.category] : []),
       tags: Array.isArray(updatedData?.tags) ? updatedData.tags : [],
       options: Array.isArray(updatedData?.options) ? updatedData.options : [],
     } as Product;
@@ -285,6 +300,7 @@ export async function PATCH(
     const updatedProduct = {
       id: updatedDoc.id,
       ...updatedData,
+      categories: updatedData?.categories || (updatedData?.category ? [updatedData.category] : []),
       tags: Array.isArray(updatedData?.tags) ? updatedData.tags : [],
       options: Array.isArray(updatedData?.options) ? updatedData.options : [],
     } as Product;

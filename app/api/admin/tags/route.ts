@@ -1,11 +1,24 @@
-// app/api/admin/categories/route.ts
+// app/api/admin/tags/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getServerSession } from 'next-auth/next';
 import { authConfig } from '@/lib/auth';
 import { ApiResponse } from '@/types';
-import { Category } from '@/types/admin';
 import type { Session } from 'next-auth';
+
+export interface Tag {
+  id: string;
+  name: string;
+  slug: string;
+  color: string;
+  icon?: string;
+  description?: string;
+  isActive: boolean;
+  sortOrder: number;
+  usageCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,155 +33,162 @@ export async function GET(request: NextRequest) {
 
     // Firebase Admin yoksa mock data döndür
     if (!adminDb) {
-      console.log('🔄 Firebase Admin bağlantısı yok, mock kategoriler kullanılıyor...');
-      
-      const mockCategories: Category[] = [
+      const mockTags: Tag[] = [
         {
           id: 'populer',
-          name: 'Popüler Ürünler',
+          name: 'Popüler',
           slug: 'populer',
+          color: '#ef4444',
           icon: '🔥',
           description: 'En çok tercih edilen ürünler',
           isActive: true,
-          sortOrder: 0,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        {
-          id: 'et-burger',
-          name: 'Et Burger',
-          slug: 'et-burger',
-          icon: '🍔',
-          description: 'Dana eti ile hazırlanan burgerler',
-          isActive: true,
           sortOrder: 1,
+          usageCount: 15,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
         {
-          id: 'tavuk-burger',
-          name: 'Tavuk Burger',
-          slug: 'tavuk-burger',
-          icon: '🐔',
-          description: 'Tavuk eti ile hazırlanan burgerler',
+          id: 'yeni',
+          name: 'Yeni',
+          slug: 'yeni',
+          color: '#10b981',
+          icon: '✨',
+          description: 'Yeni eklenen ürünler',
           isActive: true,
           sortOrder: 2,
+          usageCount: 8,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
         {
-          id: 'izmir-kumru',
-          name: 'İzmir Kumru',
-          slug: 'izmir-kumru',
-          icon: '🥖',
-          description: 'Geleneksel İzmir kumruları',
+          id: 'acili',
+          name: 'Acılı',
+          slug: 'acili',
+          color: '#f97316',
+          icon: '🌶️',
+          description: 'Acılı ürünler',
           isActive: true,
           sortOrder: 3,
+          usageCount: 12,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
         {
-          id: 'doner',
-          name: 'Dönerler',
-          slug: 'doner',
-          icon: '🌯',
-          description: 'Et ve tavuk döner çeşitleri',
+          id: 'vejetaryen',
+          name: 'Vejetaryen',
+          slug: 'vejetaryen',
+          color: '#22c55e',
+          icon: '🌱',
+          description: 'Vejetaryen ürünler',
           isActive: true,
           sortOrder: 4,
+          usageCount: 6,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
         {
-          id: 'sandwich',
-          name: 'Sandwiçler',
-          slug: 'sandwich',
-          icon: '🥪',
-          description: 'Çeşitli sandwich seçenekleri',
+          id: 'vegan',
+          name: 'Vegan',
+          slug: 'vegan',
+          color: '#84cc16',
+          icon: '🥬',
+          description: 'Vegan ürünler',
           isActive: true,
           sortOrder: 5,
+          usageCount: 3,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
         {
-          id: 'tost',
-          name: 'Tostlar',
-          slug: 'tost',
-          icon: '🍞',
-          description: 'Sıcak tost çeşitleri',
+          id: 'glutensiz',
+          name: 'Glutensiz',
+          slug: 'glutensiz',
+          color: '#8b5cf6',
+          icon: '🌾',
+          description: 'Gluten içermeyen ürünler',
           isActive: true,
           sortOrder: 6,
+          usageCount: 4,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
         {
-          id: 'yan-urun',
-          name: 'Yan Ürünler',
-          slug: 'yan-urun',
-          icon: '🍟',
-          description: 'Patates, soğan halkası vb.',
+          id: 'cok-satan',
+          name: 'Çok Satan',
+          slug: 'cok-satan',
+          color: '#f59e0b',
+          icon: '⭐',
+          description: 'En çok satan ürünler',
           isActive: true,
           sortOrder: 7,
+          usageCount: 10,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
         {
-          id: 'icecek',
-          name: 'İçecekler',
-          slug: 'icecek',
-          icon: '🥤',
-          description: 'Soğuk ve sıcak içecekler',
+          id: 'sinirli-surede',
+          name: 'Sınırlı Sürede',
+          slug: 'sinirli-surede',
+          color: '#dc2626',
+          icon: '⏰',
+          description: 'Sınırlı süre ürünleri',
           isActive: true,
           sortOrder: 8,
+          usageCount: 2,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
         {
-          id: 'tatli',
-          name: 'Tatlılar',
-          slug: 'tatli',
-          icon: '🧁',
-          description: 'Tatlı çeşitleri',
+          id: 'sicak',
+          name: 'Sıcak',
+          slug: 'sicak',
+          color: '#dc2626',
+          icon: '🔥',
+          description: 'Sıcak servis edilen ürünler',
           isActive: true,
           sortOrder: 9,
+          usageCount: 20,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
         {
-          id: 'kahvalti',
-          name: 'Kahvaltı',
-          slug: 'kahvalti',
-          icon: '🍳',
-          description: 'Kahvaltı menüleri',
+          id: 'soguk',
+          name: 'Soğuk',
+          slug: 'soguk',
+          color: '#06b6d4',
+          icon: '❄️',
+          description: 'Soğuk servis edilen ürünler',
           isActive: true,
           sortOrder: 10,
+          usageCount: 8,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         },
       ];
 
-      return NextResponse.json<ApiResponse<Category[]>>({
+      return NextResponse.json<ApiResponse<Tag[]>>({
         success: true,
-        data: mockCategories,
+        data: mockTags,
       });
     }
 
     // Firebase Admin varsa gerçek data
-    const snapshot = await adminDb.collection('categories').orderBy('sortOrder', 'asc').get();
-    const categories = snapshot.docs.map(doc => ({
+    const snapshot = await adminDb.collection('tags').orderBy('sortOrder', 'asc').get();
+    const tags = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
-    })) as Category[];
+    })) as Tag[];
 
-    return NextResponse.json<ApiResponse<Category[]>>({
+    return NextResponse.json<ApiResponse<Tag[]>>({
       success: true,
-      data: categories,
+      data: tags,
     });
 
   } catch (error) {
-    console.error('Get categories error:', error);
+    console.error('Get tags error:', error);
     return NextResponse.json<ApiResponse>({
       success: false,
-      error: 'Kategoriler yüklenirken bir hata oluştu',
+      error: 'Etiketler yüklenirken bir hata oluştu',
     }, { status: 500 });
   }
 }
@@ -185,55 +205,57 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, slug, icon, description, isActive, sortOrder } = body;
+    const { name, slug, color, icon, description, isActive, sortOrder } = body;
 
     // Validation
-    if (!name || !slug || !icon) {
+    if (!name || !slug || !color) {
       return NextResponse.json<ApiResponse>({
         success: false,
-        error: 'Gerekli alanlar eksik (ad, slug, icon)',
+        error: 'Gerekli alanlar eksik (ad, slug, renk)',
       }, { status: 400 });
     }
 
-    const categoryId = `category_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const tagId = `tag_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    const categoryData: Category = {
-      id: categoryId,
+    const tagData: Tag = {
+      id: tagId,
       name: name.trim(),
       slug: slug.trim(),
-      icon: icon.trim(),
+      color: color.trim(),
+      icon: icon?.trim() || '',
       description: description?.trim() || '',
       isActive: Boolean(isActive),
       sortOrder: sortOrder || 999,
+      usageCount: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
 
     // Firebase Admin yoksa mock response
     if (!adminDb) {
-      console.log('🔄 Kategori eklendi (Mock Mode):', categoryData.name);
+      console.log('🔄 Etiket eklendi (Mock Mode):', tagData.name);
       
-      return NextResponse.json<ApiResponse<Category>>({
+      return NextResponse.json<ApiResponse<Tag>>({
         success: true,
-        message: 'Kategori başarıyla oluşturuldu (Mock Mode)',
-        data: categoryData,
+        message: 'Etiket başarıyla oluşturuldu (Mock Mode)',
+        data: tagData,
       });
     }
 
     // Firebase Admin varsa gerçek kayıt
-    await adminDb.collection('categories').doc(categoryId).set(categoryData);
+    await adminDb.collection('tags').doc(tagId).set(tagData);
 
-    return NextResponse.json<ApiResponse<Category>>({
+    return NextResponse.json<ApiResponse<Tag>>({
       success: true,
-      message: 'Kategori başarıyla oluşturuldu',
-      data: categoryData,
+      message: 'Etiket başarıyla oluşturuldu',
+      data: tagData,
     });
 
   } catch (error) {
-    console.error('Create category error:', error);
+    console.error('Create tag error:', error);
     return NextResponse.json<ApiResponse>({
       success: false,
-      error: 'Kategori oluşturulurken bir hata oluştu',
+      error: 'Etiket oluşturulurken bir hata oluştu',
     }, { status: 500 });
   }
 }

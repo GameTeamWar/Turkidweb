@@ -26,9 +26,9 @@ export async function GET(request: NextRequest) {
           price: 45.90,
           originalPrice: 52.90,
           image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop',
-          category: 'et-burger',
+          categories: ['et-burger', 'populer'], // Artık array
           discount: 13,
-          tags: ['popular'],
+          tags: ['populer', 'cok-satan'],
           hasOptions: true,
           options: [],
           stock: 50,
@@ -42,9 +42,9 @@ export async function GET(request: NextRequest) {
           description: 'Çıtır tavuk göğsü, özel sos, marul ve domates ile',
           price: 38.90,
           image: 'https://images.unsplash.com/photo-1606755962773-d324e1e596f3?w=400&h=300&fit=crop',
-          category: 'tavuk-burger',
+          categories: ['tavuk-burger', 'populer'],
           discount: 0,
-          tags: ['popular'],
+          tags: ['populer', 'yeni'],
           hasOptions: true,
           options: [],
           isActive: true,
@@ -58,9 +58,9 @@ export async function GET(request: NextRequest) {
           price: 32.90,
           originalPrice: 39.90,
           image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400&h=300&fit=crop',
-          category: 'izmir-kumru',
+          categories: ['izmir-kumru'],
           discount: 18,
-          tags: ['popular'],
+          tags: ['populer', 'geleneksel'],
           hasOptions: true,
           options: [],
           isActive: true,
@@ -73,9 +73,9 @@ export async function GET(request: NextRequest) {
           description: 'Özel baharatlarla marine edilmiş tavuk döner',
           price: 39.90,
           image: 'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=400&h=300&fit=crop',
-          category: 'doner',
+          categories: ['doner', 'populer'],
           discount: 0,
-          tags: ['popular'],
+          tags: ['populer', 'acili'],
           hasOptions: true,
           options: [],
           isActive: true,
@@ -89,9 +89,9 @@ export async function GET(request: NextRequest) {
           price: 48.90,
           originalPrice: 55.90,
           image: 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=400&h=300&fit=crop',
-          category: 'et-burger',
+          categories: ['et-burger'],
           discount: 13,
-          tags: ['popular'],
+          tags: ['yeni', 'acili'],
           hasOptions: true,
           options: [],
           isActive: true,
@@ -105,9 +105,9 @@ export async function GET(request: NextRequest) {
           price: 18.90,
           originalPrice: 22.90,
           image: 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=400&h=300&fit=crop',
-          category: 'yan-urun',
+          categories: ['yan-urun'],
           discount: 17,
-          tags: ['popular'],
+          tags: ['populer', 'vejetaryen'],
           hasOptions: false,
           options: [],
           isActive: true,
@@ -120,9 +120,9 @@ export async function GET(request: NextRequest) {
           description: 'Soğuk kola, buzlu servis',
           price: 8.90,
           image: 'https://images.unsplash.com/photo-1581636625402-29b2a704ef13?w=400&h=300&fit=crop',
-          category: 'icecek',
+          categories: ['icecek'],
           discount: 0,
-          tags: [],
+          tags: ['soguk'],
           hasOptions: false,
           options: [],
           isActive: true,
@@ -136,9 +136,9 @@ export async function GET(request: NextRequest) {
           price: 42.90,
           originalPrice: 48.90,
           image: 'https://images.unsplash.com/photo-1553909489-cd47e0ef937f?w=400&h=300&fit=crop',
-          category: 'sandwich',
+          categories: ['sandwich', 'populer'],
           discount: 12,
-          tags: ['popular'],
+          tags: ['populer', 'cok-satan'],
           hasOptions: true,
           options: [],
           isActive: true,
@@ -151,7 +151,17 @@ export async function GET(request: NextRequest) {
       let filteredProducts = sampleProducts;
       
       if (category && category !== 'all') {
-        filteredProducts = filteredProducts.filter(product => product.category === category);
+        if (category === 'populer') {
+          // Popüler kategori için özel mantık
+          filteredProducts = filteredProducts.filter(product => 
+            product.categories.includes('populer') || product.tags.includes('populer')
+          );
+        } else {
+          // Diğer kategoriler için
+          filteredProducts = filteredProducts.filter(product => 
+            product.categories.includes(category)
+          );
+        }
       }
 
       // Aktif ürün filtresi
@@ -186,12 +196,6 @@ export async function GET(request: NextRequest) {
         queryBuilder = queryBuilder.where('isActive', '==', true);
         console.log('✅ Added isActive filter');
 
-        // Kategori filtresi
-        if (category && category !== 'all') {
-          queryBuilder = queryBuilder.where('category', '==', category);
-          console.log('✅ Added category filter:', category);
-        }
-
         // Sıralama - güncel ürünler önce
         queryBuilder = queryBuilder.orderBy('createdAt', 'desc');
         console.log('✅ Added sorting');
@@ -206,10 +210,29 @@ export async function GET(request: NextRequest) {
         return {
           id: doc.id,
           ...data,
+          // Eski category alanını categories array'ine çevir
+          categories: data.categories || (data.category ? [data.category] : []),
           tags: Array.isArray(data.tags) ? data.tags : [],
           options: Array.isArray(data.options) ? data.options : [],
         };
       }) as Product[];
+
+      // Kategori filtresi (client-side)
+      if (category && category !== 'all') {
+        if (category === 'populer') {
+          // Popüler kategori için özel mantık
+          products = products.filter(product => 
+            product.categories.includes('populer') || 
+            product.tags.includes('populer') || 
+            product.tags.includes('popular')
+          );
+        } else {
+          // Diğer kategoriler için
+          products = products.filter(product => 
+            product.categories.includes(category)
+          );
+        }
+      }
 
       // Arama filtresi (client-side)
       if (search) {
@@ -217,7 +240,7 @@ export async function GET(request: NextRequest) {
         products = products.filter(product =>
           product.name.toLowerCase().includes(searchTerm) ||
           product.description.toLowerCase().includes(searchTerm) ||
-          product.category.toLowerCase().includes(searchTerm)
+          product.categories.some(cat => cat.toLowerCase().includes(searchTerm))
         );
       }
 
@@ -244,9 +267,9 @@ export async function GET(request: NextRequest) {
           price: 45.90,
           originalPrice: 52.90,
           image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop',
-          category: 'et-burger',
+          categories: ['et-burger', 'populer'],
           discount: 13,
-          tags: ['popular'],
+          tags: ['populer', 'cok-satan'],
           hasOptions: true,
           options: [],
           stock: 50,

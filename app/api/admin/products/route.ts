@@ -27,11 +27,11 @@ export async function GET(request: NextRequest) {
           price: 45.90,
           originalPrice: 52.90,
           image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop',
-          category: 'et-burger',
+          categories: ['et-burger', 'populer'],
           discount: 13,
-          tags: ['popular'],
+          tags: ['populer'],
           hasOptions: true,
-          options: [], // Eksik olan property eklendi
+          options: [],
           stock: 50,
           isActive: true,
           createdAt: new Date().toISOString(),
@@ -57,10 +57,6 @@ export async function GET(request: NextRequest) {
       let queryBuilder: any = adminDb.collection('products');
 
       // Filtreleri uygula
-      if (category && category !== 'all') {
-        queryBuilder = queryBuilder.where('category', '==', category);
-      }
-
       if (isActive !== null && isActive !== undefined) {
         queryBuilder = queryBuilder.where('isActive', '==', isActive === 'true');
       }
@@ -76,8 +72,10 @@ export async function GET(request: NextRequest) {
       return {
         id: doc.id,
         ...data,
+        // Eski category alanını categories array'ine çevir
+        categories: data.categories || (data.category ? [data.category] : []),
         tags: Array.isArray(data.tags) ? data.tags : [],
-        options: Array.isArray(data.options) ? data.options : [], // options property'sini de garanti et
+        options: Array.isArray(data.options) ? data.options : [],
       };
     }) as Product[];
 
@@ -87,7 +85,14 @@ export async function GET(request: NextRequest) {
       products = products.filter(product =>
         product.name.toLowerCase().includes(searchTerm) ||
         product.description.toLowerCase().includes(searchTerm) ||
-        product.category.toLowerCase().includes(searchTerm)
+        product.categories.some(cat => cat.toLowerCase().includes(searchTerm))
+      );
+    }
+
+    // Kategori filtresi (client-side)
+    if (category && category !== 'all') {
+      products = products.filter(product => 
+        product.categories.includes(category)
       );
     }
 
@@ -129,7 +134,7 @@ export async function POST(request: NextRequest) {
       description, 
       price, 
       originalPrice, 
-      category, 
+      categories, // Artık array
       image,
       tags, 
       hasOptions, 
@@ -140,10 +145,10 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Validation
-    if (!name || !description || !price || !category || !image) {
+    if (!name || !description || !price || !categories || !Array.isArray(categories) || categories.length === 0 || !image) {
       return NextResponse.json<ApiResponse>({
         success: false,
-        error: 'Gerekli alanlar eksik (ad, açıklama, fiyat, kategori, görsel)',
+        error: 'Gerekli alanlar eksik (ad, açıklama, fiyat, kategoriler, görsel)',
       }, { status: 400 });
     }
 
@@ -215,7 +220,8 @@ export async function POST(request: NextRequest) {
       price: parseFloat(price.toString()),
       originalPrice: originalPrice ? parseFloat(originalPrice.toString()) : undefined,
       image: image.trim(),
-      category: category.trim(),
+      categories: Array.isArray(categories) ? categories : [],
+      category: categories[0], // Geriye uyumluluk için ilk kategoriyi de kaydet
       discount: calculatedDiscount,
       tags: Array.isArray(tags) ? tags : [],
       hasOptions: Boolean(hasOptions),

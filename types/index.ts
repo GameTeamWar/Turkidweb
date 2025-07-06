@@ -1,4 +1,4 @@
-// types/index.ts - Updated imports
+// types/index.ts - Updated with multi-category support
 
 // Product option types from admin types
 export interface ProductOption {
@@ -15,7 +15,7 @@ export interface ProductChoice {
   price?: number; // Ek ücret
 }
 
-// Updated Product interface
+// Updated Product interface with multi-category support
 export interface Product {
   id: string;
   name: string;
@@ -23,11 +23,12 @@ export interface Product {
   price: number;
   originalPrice?: number;
   image: string;
-  category: string;
+  categories: string[]; // Artık array - birden çok kategori
+  category?: string; // Geriye uyumluluk için
   discount: number;
   tags: string[];
   hasOptions: boolean;
-  options: ProductOption[]; // Yeni eklenen
+  options: ProductOption[];
   stock?: number;
   isActive: boolean;
   createdAt: string;
@@ -203,7 +204,7 @@ export interface ProductForm {
   description: string;
   price: number;
   originalPrice?: number;
-  category: string;
+  categories: string[]; // Artık array
   image: string;
   tags: string[];
   hasOptions: boolean;

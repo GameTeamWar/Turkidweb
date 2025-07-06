@@ -1,4 +1,4 @@
-// components/admin/ProductForm.tsx
+// components/admin/ProductForm.tsx - Updated Tag System
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -7,11 +7,13 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import toast from 'react-hot-toast';
 import { Category, ProductOption, ProductChoice } from '@/types/admin';
+import { Tag } from '@/app/api/admin/tags/route';
 import { 
   PlusIcon, 
   TrashIcon, 
   PencilIcon,
-  PhotoIcon
+  PhotoIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 
 interface ProductFormData {
@@ -19,7 +21,7 @@ interface ProductFormData {
   description: string;
   price: number;
   originalPrice?: number;
-  category: string;
+  categories: string[]; // Artık array
   image: string;
   tags: string[];
   hasOptions: boolean;
@@ -37,6 +39,8 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(initialData?.categories || initialData?.category ? [initialData.category] : []);
   const [selectedTags, setSelectedTags] = useState<string[]>(initialData?.tags || []);
   const [imagePreview, setImagePreview] = useState<string>(initialData?.image || '');
   const [options, setOptions] = useState<ProductOption[]>(initialData?.options || []);
@@ -56,7 +60,7 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
       description: initialData?.description || '',
       price: initialData?.price || 0,
       originalPrice: initialData?.originalPrice || undefined,
-      category: initialData?.category || '',
+      categories: initialData?.categories || initialData?.category ? [initialData.category] : [],
       image: initialData?.image || '',
       tags: initialData?.tags || [],
       hasOptions: initialData?.hasOptions || false,
@@ -76,22 +80,9 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
     ? Math.round(((watchOriginalPrice - watchPrice) / watchOriginalPrice) * 100)
     : 0;
 
-  // Available tags
-  const availableTags = [
-    'popular',
-    'new',
-    'spicy',
-    'vegetarian',
-    'vegan',
-    'gluten-free',
-    'best-seller',
-    'limited',
-    'hot',
-    'cold'
-  ];
-
   useEffect(() => {
     fetchCategories();
+    fetchTags();
     
     // Image preview güncelle
     if (watchImage && watchImage !== imagePreview) {
@@ -112,10 +103,32 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
     }
   };
 
-  const handleTagToggle = (tag: string) => {
-    const newTags = selectedTags.includes(tag)
-      ? selectedTags.filter(t => t !== tag)
-      : [...selectedTags, tag];
+  const fetchTags = async () => {
+    try {
+      const response = await fetch('/api/admin/tags');
+      const result = await response.json();
+      
+      if (result.success) {
+        setAvailableTags(result.data || []);
+      }
+    } catch (error) {
+      console.error('Tags fetch error:', error);
+    }
+  };
+
+  const handleCategoryToggle = (categorySlug: string) => {
+    const newCategories = selectedCategories.includes(categorySlug)
+      ? selectedCategories.filter(c => c !== categorySlug)
+      : [...selectedCategories, categorySlug];
+    
+    setSelectedCategories(newCategories);
+    setValue('categories', newCategories);
+  };
+
+  const handleTagToggle = (tagSlug: string) => {
+    const newTags = selectedTags.includes(tagSlug)
+      ? selectedTags.filter(t => t !== tagSlug)
+      : [...selectedTags, tagSlug];
     
     setSelectedTags(newTags);
     setValue('tags', newTags);
@@ -193,6 +206,7 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
         price: parseFloat(data.price.toString()),
         originalPrice: data.originalPrice ? parseFloat(data.originalPrice.toString()) : undefined,
         stock: data.stock ? parseInt(data.stock.toString()) : undefined,
+        categories: selectedCategories,
         tags: selectedTags,
         discount: discount,
         options: watchHasOptions ? options : []
@@ -212,12 +226,10 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
         body: JSON.stringify(formData),
       });
 
-      // Response'u kontrol et
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      // Response'un content-type'ını kontrol et
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         const textResponse = await response.text();
@@ -225,7 +237,6 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
         throw new Error('Server JSON formatında response döndürmedi');
       }
 
-      // JSON parse et
       let result;
       try {
         result = await response.json();
@@ -245,7 +256,6 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
     } catch (error) {
       console.error('Submit error:', error);
       
-      // Hata tipine göre farklı mesajlar
       if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
         toast.error('Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin.');
       } else if (error.message.includes('JSON')) {
@@ -292,24 +302,48 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
               )}
             </div>
 
-            {/* Kategori */}
+            {/* Kategoriler */}
             <div>
               <label className="block text-white text-sm font-medium mb-2">
-                Kategori *
+                Kategoriler * <span className="text-white/60 text-xs">(Birden çok seçebilirsiniz)</span>
               </label>
-              <select
-                {...register('category', { required: 'Kategori seçimi gerekli' })}
-                className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white focus:outline-none focus:border-white/50"
-              >
-                <option value="">Kategori Seçin</option>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 p-4 bg-white/10 rounded-lg max-h-48 overflow-y-auto">
                 {categories.map(category => (
-                  <option key={category.id} value={category.slug} className="text-black">
-                    {category.name}
-                  </option>
+                  <label key={category.id} className="flex items-center p-2 bg-white/10 rounded-lg cursor-pointer hover:bg-white/20 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={selectedCategories.includes(category.slug)}
+                      onChange={() => handleCategoryToggle(category.slug)}
+                      className="w-4 h-4 text-orange-500 bg-white/20 border-white/30 rounded focus:ring-orange-500"
+                    />
+                    <div className="ml-3 flex items-center gap-2">
+                      <span className="text-xl">{category.icon}</span>
+                      <span className="text-white text-sm">{category.name}</span>
+                    </div>
+                  </label>
                 ))}
-              </select>
-              {errors.category && (
-                <p className="text-red-300 text-sm mt-1">{errors.category.message}</p>
+              </div>
+              {selectedCategories.length === 0 && (
+                <p className="text-red-300 text-sm mt-1">En az bir kategori seçmelisiniz</p>
+              )}
+              {selectedCategories.length > 0 && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {selectedCategories.map(categorySlug => {
+                    const category = categories.find(c => c.slug === categorySlug);
+                    return category ? (
+                      <div key={categorySlug} className="flex items-center gap-1 px-3 py-1 bg-blue-500/20 text-blue-300 rounded-full text-xs">
+                        {category.icon} {category.name}
+                        <button
+                          type="button"
+                          onClick={() => handleCategoryToggle(categorySlug)}
+                          className="ml-1 hover:bg-white/20 rounded-full p-0.5"
+                        >
+                          <XMarkIcon className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : null;
+                  })}
+                </div>
               )}
             </div>
           </div>
@@ -340,7 +374,6 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
 
           {/* Fiyat Bilgileri */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Mevcut Fiyat */}
             <div>
               <label className="block text-white text-sm font-medium mb-2">
                 Satış Fiyatı (₺) *
@@ -361,7 +394,6 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
               )}
             </div>
 
-            {/* Orijinal Fiyat */}
             <div>
               <label className="block text-white text-sm font-medium mb-2">
                 Orijinal Fiyat (₺)
@@ -382,7 +414,6 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
               )}
             </div>
 
-            {/* İndirim Göstergesi */}
             <div>
               <label className="block text-white text-sm font-medium mb-2">
                 İndirim Oranı
@@ -420,7 +451,6 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
               )}
             </div>
 
-            {/* Stok */}
             <div>
               <label className="block text-white text-sm font-medium mb-2">
                 Stok Adedi
@@ -466,22 +496,49 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
 
           {/* Etiketler */}
           <div>
-            <label className="block text-white text-sm font-medium mb-2">
+            <label className="block text-white text-sm font-medium mb-4">
               Etiketler
             </label>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              {availableTags.map(tag => (
-                <label key={tag} className="flex items-center">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+              {availableTags.filter(tag => tag.isActive).map(tag => (
+                <label key={tag.id} className="flex items-center p-3 bg-white/10 rounded-lg cursor-pointer hover:bg-white/20 transition-colors">
                   <input
                     type="checkbox"
-                    checked={selectedTags.includes(tag)}
-                    onChange={() => handleTagToggle(tag)}
+                    checked={selectedTags.includes(tag.slug)}
+                    onChange={() => handleTagToggle(tag.slug)}
                     className="w-4 h-4 text-orange-500 bg-white/20 border-white/30 rounded focus:ring-orange-500"
                   />
-                  <span className="ml-2 text-white text-sm capitalize">{tag}</span>
+                  <div className="ml-3 flex items-center gap-2">
+                    <div 
+                      className="w-6 h-6 rounded flex items-center justify-center text-xs"
+                      style={{ backgroundColor: tag.color }}
+                    >
+                      {tag.icon}
+                    </div>
+                    <span className="text-white text-sm">{tag.name}</span>
+                  </div>
                 </label>
               ))}
             </div>
+            {selectedTags.length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {selectedTags.map(tagSlug => {
+                  const tag = availableTags.find(t => t.slug === tagSlug);
+                  return tag ? (
+                    <div key={tagSlug} className="flex items-center gap-1 px-3 py-1 rounded-full text-xs text-white" style={{ backgroundColor: tag.color }}>
+                      {tag.icon} {tag.name}
+                      <button
+                        type="button"
+                        onClick={() => handleTagToggle(tagSlug)}
+                        className="ml-1 hover:bg-white/20 rounded-full p-0.5"
+                      >
+                        <XMarkIcon className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ) : null;
+                })}
+              </div>
+            )}
           </div>
 
           {/* Ürün Seçenekleri */}
@@ -594,6 +651,7 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
                 type="button"
                 onClick={() => {
                   reset();
+                  setSelectedCategories([]);
                   setSelectedTags([]);
                   setImagePreview('');
                   setOptions([]);
@@ -665,7 +723,6 @@ function OptionModal({ option, onSave, onClose }: OptionModalProps) {
       <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto">
         <h3 className="text-xl font-bold text-white mb-4">Opsiyon Düzenle</h3>
 
-        {/* Opsiyon Adı */}
         <div className="mb-4">
           <label className="block text-white text-sm font-medium mb-2">
             Opsiyon Adı *
@@ -679,7 +736,6 @@ function OptionModal({ option, onSave, onClose }: OptionModalProps) {
           />
         </div>
 
-        {/* Min/Max Seçim */}
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
             <label className="block text-white text-sm font-medium mb-2">
@@ -707,13 +763,11 @@ function OptionModal({ option, onSave, onClose }: OptionModalProps) {
           </div>
         </div>
 
-        {/* Seçenekler */}
         <div className="mb-4">
           <label className="block text-white text-sm font-medium mb-2">
             Seçenekler
           </label>
           
-          {/* Mevcut Seçenekler */}
           <div className="space-y-2 mb-3 max-h-32 overflow-y-auto">
             {currentOption.choices.map(choice => (
               <div key={choice.id} className="flex items-center justify-between bg-white/10 rounded-lg p-2">
@@ -731,7 +785,6 @@ function OptionModal({ option, onSave, onClose }: OptionModalProps) {
             ))}
           </div>
 
-          {/* Yeni Seçenek Ekleme */}
           <div className="space-y-2">
             <input
               type="text"
@@ -761,7 +814,6 @@ function OptionModal({ option, onSave, onClose }: OptionModalProps) {
           </div>
         </div>
 
-        {/* Modal Buttons */}
         <div className="flex items-center gap-3 pt-4 border-t border-white/20">
           <button
             type="button"

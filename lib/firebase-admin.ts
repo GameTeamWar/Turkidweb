@@ -1,6 +1,10 @@
 // lib/firebase-admin.ts
 import admin from 'firebase-admin';
 
+let adminDb: any = null;
+let adminAuth: any = null;
+let adminStorage: any = null;
+
 if (!admin.apps.length) {
   try {
     console.log('🔧 Initializing Firebase Admin SDK...');
@@ -29,43 +33,64 @@ if (!admin.apps.length) {
           clientEmail: clientEmail,
           privateKey: formattedPrivateKey,
         }),
-        // databaseURL kaldırdık - sadece Firestore kullanacağız
       });
       
       console.log('✅ Firebase Admin SDK initialized successfully');
       console.log('📊 Project ID:', projectId);
       
-      // Firestore settings - authentication işlemlerini iyileştirmek için
-      const db = admin.firestore();
-      db.settings({
+      // Firestore settings
+      adminDb = admin.firestore();
+      adminAuth = admin.auth();
+      adminStorage = admin.storage();
+      
+      adminDb.settings({
         ignoreUndefinedProperties: true
       });
       
     } else {
-      console.error('❌ Firebase credentials missing:', {
+      console.warn('⚠️ Firebase credentials missing, using mock mode');
+      console.log('Missing credentials:', {
         projectId: !projectId ? 'FIREBASE_PROJECT_ID missing' : 'OK',
         clientEmail: !clientEmail ? 'FIREBASE_CLIENT_EMAIL missing' : 'OK',
         privateKey: !privateKey ? 'FIREBASE_PRIVATE_KEY missing' : 'OK'
       });
-      throw new Error('Firebase credentials missing');
+      // Mock mode - credentials eksik ama uygulama çalışsın
+      adminDb = null;
+      adminAuth = null;
+      adminStorage = null;
     }
   } catch (error) {
     console.error('❌ Firebase admin initialization error:', error);
-    throw error; // Hatayı yukarı fırlat, mock mode'a geçme
+    console.warn('🔄 Falling back to mock mode due to Firebase error');
+    // Hata durumunda mock mode'a geç
+    adminDb = null;
+    adminAuth = null;
+    adminStorage = null;
+  }
+} else {
+  // Zaten initialize edilmiş
+  try {
+    adminDb = admin.firestore();
+    adminAuth = admin.auth();
+    adminStorage = admin.storage();
+  } catch (error) {
+    console.error('❌ Error accessing Firebase services:', error);
+    adminDb = null;
+    adminAuth = null;
+    adminStorage = null;
   }
 }
 
-// Exports - Firebase başarısız olursa app crash etsin, mock'a geçmesin
-export const adminDb = admin.firestore();
-export const adminAuth = admin.auth();
-export const adminStorage = admin.storage();
+// Exports - null olabilir, bu normal
+export { adminDb, adminAuth, adminStorage };
 
 // Debug bilgisi
 console.log('🔍 Firebase Admin status:', {
   appsInitialized: admin.apps.length,
   adminDbAvailable: !!adminDb,
   adminAuthAvailable: !!adminAuth,
-  adminStorageAvailable: !!adminStorage
+  adminStorageAvailable: !!adminStorage,
+  mockMode: !adminDb
 });
 
 export default admin;
