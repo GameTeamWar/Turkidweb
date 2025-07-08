@@ -1,4 +1,4 @@
-// app/admin/orders/page.tsx - Gerçek implementasyon
+// app/admin/orders/page.tsx
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -51,7 +51,6 @@ export default function AdminOrdersPage() {
 
     fetchOrders();
     
-    // Auto-refresh every 30 seconds
     const interval = setInterval(fetchOrders, 30000);
     return () => clearInterval(interval);
   }, [session, status, router, filters]);
@@ -221,12 +220,15 @@ export default function AdminOrdersPage() {
     );
   }
 
+  // Düzeltilmiş istatistik hesaplamaları
   const pendingOrders = orders.filter(o => o.status === 'pending').length;
   const preparingOrders = orders.filter(o => ['confirmed', 'preparing'].includes(o.status)).length;
   const readyOrders = orders.filter(o => o.status === 'ready').length;
   const outForDeliveryOrders = orders.filter(o => o.status === 'out_for_delivery').length;
+  
+  // Bugünün gelirini hesaplarken createdAt kontrolü eklenmiş hali
   const todayRevenue = orders
-    .filter(o => o.createdAt.startsWith(new Date().toISOString().split('T')[0]) && o.status !== 'cancelled')
+    .filter(o => o.createdAt && o.status !== 'cancelled' && o.createdAt.startsWith(new Date().toISOString().split('T')[0]))
     .reduce((sum, o) => sum + o.total, 0);
 
   return (
@@ -426,7 +428,6 @@ export default function AdminOrdersPage() {
             className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6 hover:bg-white/20 transition-all duration-300"
           >
             <div className="flex items-start gap-4">
-              {/* Checkbox */}
               <input
                 type="checkbox"
                 checked={selectedOrders.includes(order.id)}
@@ -440,7 +441,6 @@ export default function AdminOrdersPage() {
                 className="w-4 h-4 text-orange-500 bg-white/20 border-white/30 rounded focus:ring-orange-500 mt-1"
               />
 
-              {/* Order Info */}
               <div className="flex-1">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-4">
@@ -467,7 +467,6 @@ export default function AdminOrdersPage() {
                   </div>
                 </div>
 
-                {/* Order Items */}
                 <div className="mb-4 p-4 bg-white/10 rounded-lg">
                   <div className="space-y-2">
                     {order.items.map((item, index) => (
@@ -484,7 +483,6 @@ export default function AdminOrdersPage() {
                   </div>
                 </div>
 
-                {/* Address & Contact */}
                 {order.address && (
                   <div className="mb-4 p-3 bg-white/5 rounded-lg">
                     <div className="flex items-start gap-2">
@@ -500,7 +498,6 @@ export default function AdminOrdersPage() {
                   </div>
                 )}
 
-                {/* Order Meta */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
                     <span className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
@@ -514,7 +511,6 @@ export default function AdminOrdersPage() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {/* Status Update Buttons */}
                     {getNextStatuses(order.status).map((status) => (
                       <button
                         key={status}
@@ -529,7 +525,6 @@ export default function AdminOrdersPage() {
                       </button>
                     ))}
 
-                    {/* View Details */}
                     <Link
                       href={`/admin/orders/${order.id}`}
                       className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-lg transition-colors duration-300"
@@ -540,7 +535,6 @@ export default function AdminOrdersPage() {
                   </div>
                 </div>
 
-                {/* Notes */}
                 {(order.orderNote || order.adminNote) && (
                   <div className="mt-4 p-3 bg-white/10 rounded-lg">
                     {order.orderNote && (
