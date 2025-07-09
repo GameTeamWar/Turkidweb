@@ -1,250 +1,135 @@
-// app/api/admin/products/route.ts
+// app/api/products/route.ts - Sadece gerçek data
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
-import { getServerSession } from 'next-auth/next';
-import { authConfig } from '@/lib/auth';
 import { ApiResponse, Product } from '@/types';
-import type { Session } from 'next-auth';
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authConfig) as Session | null;
+    console.log('🔍 Products API called');
     
-    if (!session || session.user?.role !== 'admin') {
-      return NextResponse.json<ApiResponse>({
-        success: false,
-        error: 'Yetkisiz erişim',
-      }, { status: 401 });
-    }
-
-    if (!adminDb) {
-      // Firebase Admin yoksa örnek data döndür
-      const sampleProducts: Product[] = [
-        {
-          id: 'sample-1',
-          name: 'Klasik Cheeseburger',
-          description: 'Özel soslu dana eti, cheddar peyniri, marul, domates',
-          price: 45.90,
-          originalPrice: 52.90,
-          image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop',
-          categories: ['et-burger', 'populer'],
-          discount: 13,
-          tags: ['populer'],
-          hasOptions: true,
-          options: [],
-          stock: 50,
-          isActive: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }
-      ];
-
-      return NextResponse.json<ApiResponse<Product[]>>({
-        success: true,
-        data: sampleProducts,
-      });
-    }
-
     const { searchParams } = new URL(request.url);
-    const search = searchParams.get('search') || '';
     const category = searchParams.get('category') || '';
-    const isActive = searchParams.get('isActive');
-    const sortBy = searchParams.get('sortBy') || 'createdAt';
-    const sortOrder = searchParams.get('sortOrder') || 'desc';
+    const active = searchParams.get('active');
+    const search = searchParams.get('search') || '';
 
-    // Query builder - tip güvenli şekilde
-    const buildQuery = () => {
-      let queryBuilder: any = adminDb.collection('products');
-
-      // Filtreleri uygula
-      if (isActive !== null && isActive !== undefined) {
-        queryBuilder = queryBuilder.where('isActive', '==', isActive === 'true');
-      }
-
-      // Sıralama
-      const orderDirection = sortOrder === 'asc' ? 'asc' : 'desc';
-      return queryBuilder.orderBy(sortBy, orderDirection);
-    };
-
-    const snapshot = await buildQuery().get();
-    let products = snapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        ...data,
-        // Eski category alanını categories array'ine çevir
-        categories: data.categories || (data.category ? [data.category] : []),
-        tags: Array.isArray(data.tags) ? data.tags : [],
-        options: Array.isArray(data.options) ? data.options : [],
-      };
-    }) as Product[];
-
-    // Arama filtresi (client-side)
-    if (search) {
-      const searchTerm = search.toLowerCase();
-      products = products.filter(product =>
-        product.name.toLowerCase().includes(searchTerm) ||
-        product.description.toLowerCase().includes(searchTerm) ||
-        product.categories.some(cat => cat.toLowerCase().includes(searchTerm))
-      );
-    }
-
-    // Kategori filtresi (client-side)
-    if (category && category !== 'all') {
-      products = products.filter(product => 
-        product.categories.includes(category)
-      );
-    }
-
-    return NextResponse.json<ApiResponse<Product[]>>({
-      success: true,
-      data: products,
-    });
-
-  } catch (error) {
-    console.error('Get products error:', error);
-    return NextResponse.json<ApiResponse>({
-      success: false,
-      error: 'Ürünler yüklenirken bir hata oluştu',
-    }, { status: 500 });
-  }
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession(authConfig) as Session | null;
-    
-    if (!session || session.user?.role !== 'admin') {
-      return NextResponse.json<ApiResponse>({
-        success: false,
-        error: 'Yetkisiz erişim',
-      }, { status: 401 });
-    }
+    console.log('📝 Query params:', { category, active, search });
 
     if (!adminDb) {
       return NextResponse.json<ApiResponse>({
         success: false,
-        error: 'Veritabanı bağlantısı mevcut değil',
+        error: 'Firebase Admin bağlantısı mevcut değil. Lütfen Firebase yapılandırmasını kontrol edin.',
       }, { status: 500 });
     }
 
-    const body = await request.json();
-    const { 
-      name, 
-      description, 
-      price, 
-      originalPrice, 
-      categories, // Artık array
-      image,
-      tags, 
-      hasOptions, 
-      options,
-      stock,
-      isActive,
-      discount
-    } = body;
+    console.log('🔥 Fetching products from Firebase...');
+    
+    try {
+      const buildQuery = () => {
+        console.log('🏗️ Building query...');
+        let queryBuilder: any = adminDb.collection('products');
 
-    // Validation
-    if (!name || !description || !price || !categories || !Array.isArray(categories) || categories.length === 0 || !image) {
-      return NextResponse.json<ApiResponse>({
-        success: false,
-        error: 'Gerekli alanlar eksik (ad, açıklama, fiyat, kategoriler, görsel)',
-      }, { status: 400 });
-    }
+        // Sadece aktif ürünleri getir (public API)
+        queryBuilder = queryBuilder.where('isActive', '==', true);
+        console.log('✅ Added isActive filter');
 
-    if (typeof price !== 'number' || price <= 0) {
-      return NextResponse.json<ApiResponse>({
-        success: false,
-        error: 'Geçerli bir fiyat girin',
-      }, { status: 400 });
-    }
-
-    if (originalPrice && (typeof originalPrice !== 'number' || originalPrice <= 0)) {
-      return NextResponse.json<ApiResponse>({
-        success: false,
-        error: 'Geçerli bir orijinal fiyat girin',
-      }, { status: 400 });
-    }
-
-    if (stock !== undefined && stock !== null && (typeof stock !== 'number' || stock < 0)) {
-      return NextResponse.json<ApiResponse>({
-        success: false,
-        error: 'Stok negatif olamaz',
-      }, { status: 400 });
-    }
-
-    // Açıklama uzunluk kontrolü
-    if (description.length > 150) {
-      return NextResponse.json<ApiResponse>({
-        success: false,
-        error: 'Açıklama en fazla 150 karakter olabilir',
-      }, { status: 400 });
-    }
-
-    // Opsiyon validasyonu
-    if (hasOptions && options && Array.isArray(options)) {
-      for (const option of options) {
-        if (!option.name || option.choices.length === 0) {
-          return NextResponse.json<ApiResponse>({
-            success: false,
-            error: 'Tüm opsiyonların adı ve en az bir seçeneği olmalı',
-          }, { status: 400 });
-        }
+        // Sıralama - güncel ürünler önce
+        queryBuilder = queryBuilder.orderBy('createdAt', 'desc');
+        console.log('✅ Added sorting');
         
-        if (option.minSelect > option.maxSelect) {
-          return NextResponse.json<ApiResponse>({
-            success: false,
-            error: 'Minimum seçim, maksimum seçimden fazla olamaz',
-          }, { status: 400 });
-        }
+        return queryBuilder;
+      };
 
-        if (option.maxSelect > option.choices.length) {
-          return NextResponse.json<ApiResponse>({
-            success: false,
-            error: 'Maksimum seçim sayısı, seçenek sayısından fazla olamaz',
-          }, { status: 400 });
+      const snapshot = await buildQuery().get();
+      console.log('📊 Query executed, docs found:', snapshot.docs.length);
+      
+      let products = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          // Tarih alanlarını string'e çevir
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
+          updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt,
+          // Eski category alanını categories array'ine çevir ve her iki field'ı da garanti et
+          categories: data.categories || (data.category ? [data.category] : []),
+          category: data.category || (data.categories && data.categories[0] ? data.categories[0] : ''),
+          tags: Array.isArray(data.tags) ? data.tags : [],
+          options: Array.isArray(data.options) ? data.options : [],
+          // Sayısal alanları garanti et
+          price: typeof data.price === 'number' ? data.price : 0,
+          originalPrice: typeof data.originalPrice === 'number' ? data.originalPrice : undefined,
+          discount: typeof data.discount === 'number' ? data.discount : 0,
+          stock: typeof data.stock === 'number' ? data.stock : undefined,
+        };
+      }) as Product[];
+
+      console.log('🔍 Before filtering - products count:', products.length);
+      console.log('🔍 Sample product structure:', products[0] ? {
+        name: products[0].name,
+        categories: products[0].categories,
+        category: products[0].category,
+        tags: products[0].tags
+      } : 'No products');
+
+      // Kategori filtresi (client-side)
+      if (category && category !== 'all') {
+        if (category === 'populer') {
+          // Popüler kategori için özel mantık
+          products = products.filter(product => {
+            const hasPopularTag = product.tags.includes('populer') || 
+                                 product.tags.includes('popular') || 
+                                 product.tags.includes('cok-satan');
+            console.log(`🔍 Product ${product.name} - popular check: ${hasPopularTag}`, product.tags);
+            return hasPopularTag;
+          });
+        } else {
+          // Diğer kategoriler için - hem categories array hem de category string kontrol et
+          products = products.filter(product => {
+            const isInCategory = (product.categories && product.categories.includes(category)) ||
+                               (product.category === category);
+            console.log(`🔍 Product ${product.name} - category check: ${isInCategory}`, {
+              requestedCategory: category,
+              productCategories: product.categories,
+              productCategory: product.category
+            });
+            return isInCategory;
+          });
         }
       }
+
+      console.log('🔍 After category filtering - products count:', products.length);
+
+      // Arama filtresi (client-side)
+      if (search) {
+        const searchTerm = search.toLowerCase();
+        products = products.filter(product =>
+          product.name.toLowerCase().includes(searchTerm) ||
+          product.description.toLowerCase().includes(searchTerm) ||
+          product.categories.some(cat => cat.toLowerCase().includes(searchTerm))
+        );
+        console.log('🔍 After search filtering - products count:', products.length);
+      }
+
+      console.log('✅ Final products being returned:', products.length);
+
+      return NextResponse.json<ApiResponse<Product[]>>({
+        success: true,
+        data: products,
+      });
+
+    } catch (firebaseError) {
+      console.error('❌ Firebase query error:', firebaseError);
+      return NextResponse.json<ApiResponse>({
+        success: false,
+        error: `Firebase'den ürünler yüklenirken hata: ${firebaseError.message}`,
+      }, { status: 500 });
     }
 
-    // Ürün ID oluştur
-    const productId = `product_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    // İndirim hesapla
-    const calculatedDiscount = originalPrice && originalPrice > price ? 
-      Math.round(((originalPrice - price) / originalPrice) * 100) : 0;
-
-    const productData: Omit<Product, 'id'> = {
-      name: name.trim(),
-      description: description.trim(),
-      price: parseFloat(price.toString()),
-      originalPrice: originalPrice ? parseFloat(originalPrice.toString()) : undefined,
-      image: image.trim(),
-      categories: Array.isArray(categories) ? categories : [],
-      category: categories[0], // Geriye uyumluluk için ilk kategoriyi de kaydet
-      discount: calculatedDiscount,
-      tags: Array.isArray(tags) ? tags : [],
-      hasOptions: Boolean(hasOptions),
-      options: hasOptions && Array.isArray(options) ? options : [],
-      stock: stock !== undefined && stock !== null ? parseInt(stock.toString()) : undefined,
-      isActive: Boolean(isActive),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    await adminDb.collection('products').doc(productId).set(productData);
-
-    return NextResponse.json<ApiResponse<Product>>({
-      success: true,
-      message: 'Ürün başarıyla oluşturuldu',
-      data: { id: productId, ...productData },
-    });
-
   } catch (error) {
-    console.error('Create product error:', error);
+    console.error('❌ General API error:', error);
     return NextResponse.json<ApiResponse>({
       success: false,
-      error: 'Ürün oluşturulurken bir hata oluştu',
+      error: `Ürünler yüklenirken bir hata oluştu: ${error.message}`,
     }, { status: 500 });
   }
 }

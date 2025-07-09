@@ -220,15 +220,46 @@ export default function AdminOrdersPage() {
     );
   }
 
-  // Düzeltilmiş istatistik hesaplamaları
+  // Düzeltilmiş istatistik hesaplamaları - Date parsing problemi çözüldü
   const pendingOrders = orders.filter(o => o.status === 'pending').length;
   const preparingOrders = orders.filter(o => ['confirmed', 'preparing'].includes(o.status)).length;
   const readyOrders = orders.filter(o => o.status === 'ready').length;
   const outForDeliveryOrders = orders.filter(o => o.status === 'out_for_delivery').length;
   
-  // Bugünün gelirini hesaplarken createdAt kontrolü eklenmiş hali
+  // Bugünün gelirini hesaplarken tarih parsing problemi çözülmüş hali
   const todayRevenue = orders
-    .filter(o => o.createdAt && o.status !== 'cancelled' && o.createdAt.startsWith(new Date().toISOString().split('T')[0]))
+    .filter(o => {
+      try {
+        if (!o.createdAt || o.status === 'cancelled') return false;
+        
+        // Farklı veri tiplerini handle et
+        let orderDate: Date;
+        const createdAt = o.createdAt as any; // Type assertion to fix instanceof issue
+        
+        if (typeof createdAt === 'string') {
+          orderDate = new Date(createdAt);
+        } else if (createdAt instanceof Date) {
+          orderDate = createdAt;
+        } else if (createdAt && typeof createdAt === 'object' && typeof createdAt.toDate === 'function') {
+          // Firebase Timestamp ise
+          orderDate = createdAt.toDate();
+        } else {
+          // Fallback: Direct Date constructor
+          orderDate = new Date(createdAt);
+        }
+        
+        // Invalid date kontrolü
+        if (isNaN(orderDate.getTime())) {
+          return false;
+        }
+        
+        const today = new Date();
+        return orderDate.toDateString() === today.toDateString();
+      } catch (error) {
+        console.warn('Tarih parse hatası:', error);
+        return false;
+      }
+    })
     .reduce((sum, o) => sum + o.total, 0);
 
   return (
@@ -469,17 +500,23 @@ export default function AdminOrdersPage() {
 
                 <div className="mb-4 p-4 bg-white/10 rounded-lg">
                   <div className="space-y-2">
-                    {order.items.map((item, index) => (
-                      <div key={index} className="flex justify-between text-sm">
-                        <span className="text-white">
-                          {item.quantity}x {item.name}
-                          {item.selectedOptions && Object.values(item.selectedOptions).length > 0 && (
-                            <span className="text-white/60"> ({Object.values(item.selectedOptions).join(', ')})</span>
-                          )}
-                        </span>
-                        <span className="text-white/80">{(item.price * item.quantity).toFixed(2)} ₺</span>
+                    {order.items && order.items.length > 0 ? (
+                      order.items.map((item, index) => (
+                        <div key={index} className="flex justify-between text-sm">
+                          <span className="text-white">
+                            {item.quantity}x {item.name}
+                            {item.selectedOptions && Object.values(item.selectedOptions).length > 0 && (
+                              <span className="text-white/60"> ({Object.values(item.selectedOptions).join(', ')})</span>
+                            )}
+                          </span>
+                          <span className="text-white/80">{(item.price * item.quantity).toFixed(2)} ₺</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-white/60 text-sm text-center py-2">
+                        Sipariş ürünleri yüklenemedi
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
 
@@ -506,7 +543,33 @@ export default function AdminOrdersPage() {
                     </span>
                     
                     <span className="text-white/60 text-sm">
-                      {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true, locale: tr })}
+                      {(() => {
+                        try {
+                          if (!order.createdAt) return 'Tarih bilinmiyor';
+                          
+                          let orderDate: Date;
+                          const createdAt = order.createdAt as any;
+                          
+                          if (typeof createdAt === 'string') {
+                            orderDate = new Date(createdAt);
+                          } else if (createdAt instanceof Date) {
+                            orderDate = createdAt;
+                          } else if (createdAt && typeof createdAt === 'object' && typeof createdAt.toDate === 'function') {
+                            orderDate = createdAt.toDate();
+                          } else {
+                            orderDate = new Date(createdAt);
+                          }
+                          
+                          if (isNaN(orderDate.getTime())) {
+                            return 'Geçersiz tarih';
+                          }
+                          
+                          return formatDistanceToNow(orderDate, { addSuffix: true, locale: tr });
+                        } catch (error) {
+                          console.warn('Tarih formatı hatası:', error);
+                          return 'Tarih hatası';
+                        }
+                      })()}
                     </span>
                   </div>
 

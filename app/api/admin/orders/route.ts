@@ -1,4 +1,4 @@
-// app/api/admin/orders/route.ts
+// app/api/admin/orders/route.ts - Sadece gerçek data
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { getServerSession } from 'next-auth/next';
@@ -17,6 +17,13 @@ export async function GET(request: NextRequest) {
       }, { status: 401 });
     }
 
+    if (!adminDb) {
+      return NextResponse.json<ApiResponse>({
+        success: false,
+        error: 'Firebase Admin bağlantısı mevcut değil. Lütfen Firebase yapılandırmasını kontrol edin.',
+      }, { status: 500 });
+    }
+
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
     const status = searchParams.get('status');
@@ -25,106 +32,9 @@ export async function GET(request: NextRequest) {
     const dateFrom = searchParams.get('dateFrom');
     const dateTo = searchParams.get('dateTo');
 
-    if (!adminDb) {
-      // Mock data for development
-      const mockOrders: Order[] = [
-        {
-          id: 'order_1',
-          orderNumber: 'ORD-001',
-          userId: 'user1',
-          userEmail: 'ahmet@test.com',
-          userName: 'Ahmet Yılmaz',
-          items: [
-            {
-              id: 'sample-1',
-              name: 'Klasik Cheeseburger',
-              description: 'Özel soslu dana eti, cheddar peyniri',
-              price: 45.90,
-              image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop',
-              categories: ['et-burger'],
-              discount: 0,
-              tags: [],
-              hasOptions: false,
-              options: [],
-              isActive: true,
-              quantity: 2,
-              cartKey: 'sample-1',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            }
-          ],
-          subtotal: 91.80,
-          tax: 7.34,
-          total: 99.14,
-          status: 'pending',
-          paymentMethod: 'card',
-          paymentStatus: 'paid',
-          phone: '0555 123 45 67',
-          address: {
-            id: 'addr1',
-            title: 'Ev',
-            fullAddress: 'Atatürk Mahallesi, İnönü Caddesi No:123, Mersin',
-            city: 'Mersin',
-            district: 'Akdeniz',
-            postalCode: '33100',
-            isDefault: true
-          },
-          createdAt: new Date(Date.now() - 3600000).toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: 'order_2',
-          orderNumber: 'ORD-002',
-          userId: 'user2',
-          userEmail: 'fatma@test.com',
-          userName: 'Fatma Demir',
-          items: [
-            {
-              id: 'sample-2',
-              name: 'Tavuk Burger',
-              description: 'Çıtır tavuk göğsü',
-              price: 38.90,
-              image: 'https://images.unsplash.com/photo-1606755962773-d324e1e596f3?w=400&h=300&fit=crop',
-              categories: ['tavuk-burger'],
-              discount: 0,
-              tags: [],
-              hasOptions: false,
-              options: [],
-              isActive: true,
-              quantity: 1,
-              cartKey: 'sample-2',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            }
-          ],
-          subtotal: 38.90,
-          tax: 3.11,
-          total: 42.01,
-          status: 'preparing',
-          paymentMethod: 'cash',
-          paymentStatus: 'pending',
-          phone: '0555 987 65 43',
-          address: {
-            id: 'addr2',
-            title: 'İş',
-            fullAddress: 'Çankaya Mahallesi, Ankara Caddesi No:456, Mersin',
-            city: 'Mersin',
-            district: 'Yenişehir',
-            postalCode: '33200',
-            isDefault: false
-          },
-          createdAt: new Date(Date.now() - 7200000).toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-      ];
+    console.log('🔍 Fetching orders from Firebase...');
 
-      return NextResponse.json<ApiResponse<Order[]>>({
-        success: true,
-        data: mockOrders,
-      });
-    }
-
-    // Firebase Admin varsa gerçek data
+    // Firebase'den gerçek veri çek
     let query: any = adminDb.collection('orders');
 
     // Filtreleri uygula
@@ -144,24 +54,40 @@ export async function GET(request: NextRequest) {
       query = query.where('createdAt', '<=', dateTo + 'T23:59:59Z');
     }
 
-    // Sıralama
+    // Sıralama - en yeni siparişler önce
     query = query.orderBy('createdAt', 'desc');
 
     const snapshot = await query.get();
-    let orders = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    })) as Order[];
+    console.log(`📊 Found ${snapshot.docs.length} orders`);
+
+    let orders = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        // Tarih alanlarını string'e çevir
+        createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
+        updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt,
+        // Items array'ini garanti et
+        items: Array.isArray(data.items) ? data.items : [],
+        // Sayısal alanları garanti et
+        total: typeof data.total === 'number' ? data.total : 0,
+        subtotal: typeof data.subtotal === 'number' ? data.subtotal : 0,
+        tax: typeof data.tax === 'number' ? data.tax : 0,
+      };
+    }) as Order[];
 
     // Arama filtresi (client-side)
     if (search) {
       const searchTerm = search.toLowerCase();
       orders = orders.filter(order =>
-        order.orderNumber.toLowerCase().includes(searchTerm) ||
-        order.userName.toLowerCase().includes(searchTerm) ||
-        order.userEmail.toLowerCase().includes(searchTerm)
+        order.orderNumber?.toLowerCase().includes(searchTerm) ||
+        order.userName?.toLowerCase().includes(searchTerm) ||
+        order.userEmail?.toLowerCase().includes(searchTerm)
       );
     }
+
+    console.log(`✅ Returning ${orders.length} filtered orders`);
 
     return NextResponse.json<ApiResponse<Order[]>>({
       success: true,
@@ -169,10 +95,10 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Get orders error:', error);
+    console.error('❌ Get orders error:', error);
     return NextResponse.json<ApiResponse>({
       success: false,
-      error: 'Siparişler yüklenirken bir hata oluştu',
+      error: `Siparişler yüklenirken bir hata oluştu: ${error.message}`,
     }, { status: 500 });
   }
 }
