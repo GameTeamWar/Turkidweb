@@ -1,7 +1,7 @@
 // app/page.tsx - Kategori filtreleme düzeltildi
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useCartStore } from '@/store/cart';
@@ -93,15 +93,8 @@ export default function HomePage() {
     }
   };
 
-  const filteredProducts = products.filter(product => {
-    console.log('🔍 Filtering product:', {
-      name: product.name,
-      categories: product.categories,
-      category: product.category,
-      currentCategory,
-      tags: product.tags
-    });
-
+  // Remove console logs in production
+  const filteredProducts = useMemo(() => products.filter(product => {
     // Kategori filtresi - güncellenmiş mantık
     if (currentCategory === 'populer') {
       // Popüler etiketine sahip ürünleri göster
@@ -109,7 +102,6 @@ export default function HomePage() {
                            product.tags.includes('popular') || 
                            product.tags.includes('cok-satan');
       if (!hasPopularTag) {
-        console.log('❌ Product filtered out - not popular');
         return false;
       }
     } else {
@@ -117,39 +109,26 @@ export default function HomePage() {
       const isInCategory = (product.categories && product.categories.includes(currentCategory)) ||
                           (product.category === currentCategory);
       if (!isInCategory) {
-        console.log('❌ Product filtered out - not in category');
         return false;
       }
     }
     
     // Diğer filtreler
     if (filters.vegetarian && !product.tags.includes('vejetaryen')) {
-      console.log('❌ Product filtered out - not vegetarian');
       return false;
     }
     if (filters.spicy && !product.tags.includes('acili')) {
-      console.log('❌ Product filtered out - not spicy');
       return false;
     }
     if (filters.discount && product.discount === 0) {
-      console.log('❌ Product filtered out - no discount');
       return false;
     }
     if (filters.popular && !product.tags.includes('populer') && !product.tags.includes('popular') && !product.tags.includes('cok-satan')) {
-      console.log('❌ Product filtered out - not in popular filter');
       return false;
     }
     
-    console.log('✅ Product passed all filters');
     return true;
-  });
-
-  console.log('📊 Filter results:', {
-    totalProducts: products.length,
-    filteredProducts: filteredProducts.length,
-    currentCategory,
-    filters
-  });
+  }), [products, currentCategory, filters]);
 
   const handleAddToCart = (product: Product, options?: Record<string, string>) => {
     addItem(product, options);

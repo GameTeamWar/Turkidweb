@@ -1,7 +1,7 @@
 // app/admin/tags/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { Tag } from '@/app/api/admin/tags/route';
 import { 
@@ -120,9 +120,19 @@ export default function TagsPage() {
     }
   };
 
-  const filteredTags = tags.filter(tag =>
-    tag.name.toLowerCase().includes(search.toLowerCase()) ||
-    tag.description.toLowerCase().includes(search.toLowerCase())
+  // Debounce search
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      // No fetch here, just filtering
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [search]);
+
+  const filteredTags = useMemo(() =>
+    tags.filter(tag =>
+      tag.name.toLowerCase().includes(search.toLowerCase()) ||
+      tag.description.toLowerCase().includes(search.toLowerCase())
+    ), [tags, search]
   );
 
   if (loading) {

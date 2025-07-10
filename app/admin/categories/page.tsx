@@ -1,7 +1,7 @@
 // app/admin/categories/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { Category } from '@/types/admin';
 import { 
@@ -122,6 +122,11 @@ export default function CategoriesPage() {
     }
   };
 
+  const sortedCategories = useMemo(() =>
+    [...categories].sort((a, b) => a.sortOrder - b.sortOrder),
+    [categories]
+  );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -129,8 +134,6 @@ export default function CategoriesPage() {
       </div>
     );
   }
-
-  const sortedCategories = [...categories].sort((a, b) => a.sortOrder - b.sortOrder);
 
   return (
     <div className="space-y-6">

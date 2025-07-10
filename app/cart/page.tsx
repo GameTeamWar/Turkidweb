@@ -16,8 +16,7 @@ export default function CartPage() {
   const { items, clearCart, getTotalPrice } = useCartStore();
 
   const subtotal = getTotalPrice();
-  const tax = subtotal * 0.08; // %8 KDV
-  const total = subtotal + tax;
+  const total = subtotal; // KDV kaldırıldı, toplam subtotal ile aynı
 
   const handleCheckout = () => {
     if (!session) {
@@ -84,10 +83,6 @@ export default function CartPage() {
                   <div className="flex justify-between text-white/80">
                     <span>Ara Toplam:</span>
                     <span>{subtotal.toFixed(2)} ₺</span>
-                  </div>
-                  <div className="flex justify-between text-white/80">
-                    <span>KDV (%8):</span>
-                    <span>{tax.toFixed(2)} ₺</span>
                   </div>
                   <div className="flex justify-between text-white/80">
                     <span>Teslimat:</span>

@@ -1,12 +1,13 @@
-// app/admin/orders/page.tsx
+// app/admin/orders/page.tsx - Enhanced with audio notifications
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Order, OrderFilters, ApiResponse } from '@/types';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
+import { audioNotification } from '@/lib/audio-notification';
 import { 
   EyeIcon,
   ClockIcon,
@@ -18,11 +19,16 @@ import {
   MagnifyingGlassIcon,
   FunnelIcon,
   ArrowPathIcon,
-  MapPinIcon
+  MapPinIcon,
+  SpeakerWaveIcon,
+  SpeakerXMarkIcon,
+  ArchiveBoxIcon,
+  ClockIcon as HistoryIcon
 } from '@heroicons/react/24/outline';
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 import toast, { Toaster } from 'react-hot-toast';
+import dynamic from 'next/dynamic';
 
 export default function AdminOrdersPage() {
   const { data: session, status } = useSession();
@@ -31,6 +37,9 @@ export default function AdminOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
+  const [audioEnabled, setAudioEnabled] = useState(false);
+  const [showMoveToHistory, setShowMoveToHistory] = useState(false);
+  const [lastOrderCount, setLastOrderCount] = useState(0);
   const [filters, setFilters] = useState<OrderFilters>({
     search: '',
     status: undefined,
@@ -41,21 +50,56 @@ export default function AdminOrdersPage() {
   });
   const [showFilters, setShowFilters] = useState(false);
 
+  // LocalStorage'dan ses ayarını yükle
+  useEffect(() => {
+    const savedAudioSetting = localStorage.getItem('adminAudioEnabled');
+    if (savedAudioSetting !== null) {
+      setAudioEnabled(JSON.parse(savedAudioSetting));
+    }
+  }, []);
+
   useEffect(() => {
     if (status === 'loading') return;
-    
     if (!session || (session.user as any)?.role !== 'admin') {
       router.push('/');
       return;
     }
-
     fetchOrders();
+    // Auto-refresh every 15 seconds for new orders
+    const interval = setInterval(() => {
+      fetchOrders(false, true); // silent fetch for audio detection
+    }, 15000);
     
-    const interval = setInterval(fetchOrders, 30000);
     return () => clearInterval(interval);
-  }, [session, status, router, filters]);
+  }, [session, status, router]);
 
-  const fetchOrders = async (showLoading = true) => {
+  useEffect(() => {
+    fetchOrders();
+  }, [filters]);
+
+  // Auto cleanup at closing time
+  useEffect(() => {
+    const checkAutoCleanup = async () => {
+      const now = new Date();
+      const hour = now.getHours();
+      
+      // Kapanış saatinde otomatik temizlik (23:00)
+      if (hour === 23 && now.getMinutes() === 0) {
+        try {
+          await fetch('/api/admin/orders/move-to-history?action=auto-cleanup');
+          toast.success('Günlük siparişler otomatik olarak geçmişe taşındı');
+          fetchOrders();
+        } catch (error) {
+          console.error('Auto cleanup failed:', error);
+        }
+      }
+    };
+
+    const dailyCheck = setInterval(checkAutoCleanup, 60000); // Check every minute
+    return () => clearInterval(dailyCheck);
+  }, []);
+
+  const fetchOrders = async (showLoading = true, checkForNewOrders = false) => {
     try {
       if (showLoading) setLoading(true);
       else setRefreshing(true);
@@ -72,7 +116,38 @@ export default function AdminOrdersPage() {
       const result: ApiResponse<Order[]> = await response.json();
       
       if (result.success) {
-        setOrders(result.data || []);
+        const newOrders = result.data || [];
+        
+        // Check for new orders for audio notification
+        if (checkForNewOrders && audioEnabled && lastOrderCount > 0) {
+          if (newOrders.length > lastOrderCount) {
+            const latestOrder = newOrders[0]; // Assuming orders are sorted by newest first
+            
+            // Play audio notification for new order
+            audioNotification.notifyNewOrder({
+              orderNumber: latestOrder.orderNumber,
+              customerName: latestOrder.userName,
+              items: latestOrder.items.map(item => ({
+                name: item.name,
+                quantity: item.quantity
+              })),
+              total: latestOrder.total,
+              isUrgent: false // You can add logic to determine urgency
+            });
+
+            toast.success(`🔔 Yeni sipariş: #${latestOrder.orderNumber}`, {
+              duration: 5000,
+              style: {
+                background: 'linear-gradient(45deg, #10b981, #059669)',
+                color: 'white',
+                fontWeight: 'bold'
+              }
+            });
+          }
+        }
+        
+        setOrders(newOrders);
+        setLastOrderCount(newOrders.length);
       } else {
         toast.error(result.error || 'Siparişler yüklenirken hata oluştu');
       }
@@ -82,6 +157,83 @@ export default function AdminOrdersPage() {
     } finally {
       setLoading(false);
       setRefreshing(false);
+    }
+  };
+
+  const enableAudioNotifications = async () => {
+    try {
+      const enabled = await audioNotification.enableNotifications();
+      const permissionGranted = await audioNotification.requestNotificationPermission();
+      
+      if (enabled) {
+        setAudioEnabled(true);
+        localStorage.setItem('adminAudioEnabled', 'true');
+        audioNotification.testSound();
+        toast.success('🔊 Sesli uyarılar aktif edildi');
+      } else {
+        toast.error('Sesli uyarılar etkinleştirilemedi');
+      }
+    } catch (error) {
+      console.error('Audio enable error:', error);
+      toast.error('Sesli uyarı sistemi hatası');
+    }
+  };
+
+  const disableAudioNotifications = () => {
+    setAudioEnabled(false);
+    localStorage.setItem('adminAudioEnabled', 'false');
+    toast.success('🔇 Sesli uyarılar deaktif edildi');
+  };
+
+  const handleSelectAll = () => {
+    if (selectedOrders.length === filteredOrders.length) {
+      setSelectedOrders([]);
+    } else {
+      setSelectedOrders(filteredOrders.map(order => order.id));
+    }
+  };
+
+  const handleMoveToHistory = async () => {
+    if (selectedOrders.length === 0) {
+      toast.error('Lütfen geçmişe taşımak için en az bir sipariş seçin');
+      return;
+    }
+
+    const completedOrders = orders.filter(order => 
+      selectedOrders.includes(order.id) && 
+      ['delivered', 'cancelled'].includes(order.status)
+    );
+
+    if (completedOrders.length === 0) {
+      toast.error('Sadece teslim edilmiş veya iptal edilmiş siparişler geçmişe taşınabilir');
+      return;
+    }
+
+    if (!confirm(`Seçili ${completedOrders.length} sipariş geçmişe taşınacak. Onaylıyor musunuz?`)) return;
+
+    try {
+      const response = await fetch('/api/admin/orders/move-to-history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderIds: completedOrders.map(o => o.id),
+          targetDate: new Date().toISOString().split('T')[0]
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success(`${result.data.movedCount} sipariş geçmişe taşındı`);
+        setSelectedOrders([]);
+        setShowMoveToHistory(false);
+        fetchOrders(false);
+      } else {
+        toast.error(result.error || 'Siparişler geçmişe taşınırken hata oluştu');
+      }
+    } catch (error) {
+      console.error('Move to history error:', error);
+      toast.error('Siparişler geçmişe taşınırken hata oluştu');
     }
   };
 
@@ -189,7 +341,7 @@ export default function AdminOrdersPage() {
     }
   };
 
-  const filteredOrders = orders.filter(order => {
+  const filteredOrders = useMemo(() => orders.filter(order => {
     if (filters.search) {
       const search = filters.search.toLowerCase();
       return (
@@ -199,7 +351,7 @@ export default function AdminOrdersPage() {
       );
     }
     return true;
-  });
+  }), [orders, filters.search]);
 
   const getNextStatuses = (currentStatus: Order['status']): Order['status'][] => {
     switch (currentStatus) {
@@ -220,50 +372,54 @@ export default function AdminOrdersPage() {
     );
   }
 
-  // Düzeltilmiş istatistik hesaplamaları - Date parsing problemi çözüldü
+  // Statistics
   const pendingOrders = orders.filter(o => o.status === 'pending').length;
   const preparingOrders = orders.filter(o => ['confirmed', 'preparing'].includes(o.status)).length;
   const readyOrders = orders.filter(o => o.status === 'ready').length;
   const outForDeliveryOrders = orders.filter(o => o.status === 'out_for_delivery').length;
+  const completedOrders = orders.filter(o => ['delivered', 'cancelled'].includes(o.status)).length;
   
-  // Bugünün gelirini hesaplarken tarih parsing problemi çözülmüş hali
   const todayRevenue = orders
     .filter(o => {
       try {
         if (!o.createdAt || o.status === 'cancelled') return false;
-        
-        // Farklı veri tiplerini handle et
         let orderDate: Date;
-        const createdAt = o.createdAt as any; // Type assertion to fix instanceof issue
+        const createdAt = o.createdAt as any;
         
         if (typeof createdAt === 'string') {
           orderDate = new Date(createdAt);
         } else if (createdAt instanceof Date) {
           orderDate = createdAt;
         } else if (createdAt && typeof createdAt === 'object' && typeof createdAt.toDate === 'function') {
-          // Firebase Timestamp ise
           orderDate = createdAt.toDate();
         } else {
-          // Fallback: Direct Date constructor
-          orderDate = new Date(createdAt);
-        }
-        
-        // Invalid date kontrolü
-        if (isNaN(orderDate.getTime())) {
           return false;
         }
         
         const today = new Date();
         return orderDate.toDateString() === today.toDateString();
       } catch (error) {
-        console.warn('Tarih parse hatası:', error);
         return false;
       }
     })
     .reduce((sum, o) => sum + o.total, 0);
 
+  // Harita sayfası için (örnek: /admin/orders/map)
+  // Eğer harita bileşeniniz ayrı bir dosyada ise:
+  // const MapComponent = dynamic(() => import('@/components/admin/OrdersMap'), {
+  //   ssr: false,
+  //   loading: () => (
+  //     <div className="flex items-center justify-center h-96">
+  //       <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-500"></div>
+  //       <span className="ml-4 text-white text-lg">Harita yükleniyor...</span>
+  //     </div>
+  //   ),
+  // });
+
   return (
     <div className="space-y-6">
+      <Toaster position="top-right" />
+      
       {/* Header with Stats */}
       <div className="mb-8">
         <div className="flex items-center justify-between mb-6">
@@ -274,13 +430,45 @@ export default function AdminOrdersPage() {
             </p>
           </div>
           <div className="flex items-center gap-4">
+            {/* Audio Control */}
+            <button
+              onClick={audioEnabled ? disableAudioNotifications : enableAudioNotifications}
+              className={`px-4 py-2 rounded-lg font-medium transition-all duration-300 flex items-center gap-2 ${
+                audioEnabled 
+                  ? 'bg-green-500 hover:bg-green-600 text-white' 
+                  : 'bg-gray-500 hover:bg-gray-600 text-white'
+              }`}
+            >
+              {audioEnabled ? (
+                <>
+                  <SpeakerWaveIcon className="w-5 h-5" />
+                  Ses Aktif
+                </>
+              ) : (
+                <>
+                  <SpeakerXMarkIcon className="w-5 h-5" />
+                  Ses Kapalı
+                </>
+              )}
+            </button>
+
+            {/* History Link */}
+            <Link
+              href="/admin/orders/history"
+              className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-300 flex items-center gap-2"
+            >
+              <HistoryIcon className="w-5 h-5" />
+              Geçmiş
+            </Link>
+
             <Link
               href="/admin/orders/map"
               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition-all duration-300 flex items-center gap-2"
             >
               <MapPinIcon className="w-5 h-5" />
-              Harita Görünümü
+              Harita
             </Link>
+            
             <button
               onClick={() => fetchOrders(false)}
               disabled={refreshing}
@@ -293,12 +481,12 @@ export default function AdminOrdersPage() {
         </div>
 
         {/* Quick Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
           <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4">
             <div className="flex items-center gap-3">
               <ClockIcon className="w-8 h-8 text-yellow-300" />
               <div>
-                <p className="text-yellow-300 text-sm font-medium">Bekleyen</p>
+                <p className="text-yellow-300 text-sm font-medium">Bekliyor</p>
                 <p className="text-white text-xl font-bold">{pendingOrders}</p>
               </div>
             </div>
@@ -330,6 +518,16 @@ export default function AdminOrdersPage() {
               <div>
                 <p className="text-indigo-300 text-sm font-medium">Yolda</p>
                 <p className="text-white text-xl font-bold">{outForDeliveryOrders}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-500/10 border border-gray-500/20 rounded-xl p-4">
+            <div className="flex items-center gap-3">
+              <ArchiveBoxIcon className="w-8 h-8 text-gray-300" />
+              <div>
+                <p className="text-gray-300 text-sm font-medium">Tamamlandı</p>
+                <p className="text-white text-xl font-bold">{completedOrders}</p>
               </div>
             </div>
           </div>
@@ -414,6 +612,26 @@ export default function AdminOrdersPage() {
         )}
       </div>
 
+      {/* Select All Checkbox */}
+      {filteredOrders.length > 0 && (
+        <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-4">
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={selectedOrders.length === filteredOrders.length && filteredOrders.length > 0}
+              onChange={handleSelectAll}
+              className="w-4 h-4 text-orange-500 bg-white/20 border-white/30 rounded focus:ring-orange-500"
+            />
+            <span className="text-white font-medium">
+              {selectedOrders.length === filteredOrders.length && filteredOrders.length > 0 
+                ? 'Tümünün seçimini kaldır' 
+                : 'Tümünü seç'
+              } ({filteredOrders.length} sipariş)
+            </span>
+          </label>
+        </div>
+      )}
+
       {/* Bulk Actions */}
       {selectedOrders.length > 0 && (
         <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-4">
@@ -445,6 +663,13 @@ export default function AdminOrdersPage() {
                 className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-300"
               >
                 İptal Et
+              </button>
+              <button
+                onClick={handleMoveToHistory}
+                className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-300 flex items-center gap-2"
+              >
+                <ArchiveBoxIcon className="w-4 h-4" />
+                Geçmişe Taşı
               </button>
             </div>
           </div>
@@ -505,145 +730,101 @@ export default function AdminOrdersPage() {
                         <div key={index} className="flex justify-between text-sm">
                           <span className="text-white">
                             {item.quantity}x {item.name}
-                            {item.selectedOptions && Object.values(item.selectedOptions).length > 0 && (
-                              <span className="text-white/60"> ({Object.values(item.selectedOptions).join(', ')})</span>
+                            {item.selectedOptions && Object.keys(item.selectedOptions).length > 0 && (
+                              <span className="text-white/60 ml-2">
+                                ({Object.entries(item.selectedOptions).map(([key, value]) => `${key}: ${value}`).join(', ')})
+                              </span>
                             )}
                           </span>
                           <span className="text-white/80">{(item.price * item.quantity).toFixed(2)} ₺</span>
                         </div>
                       ))
                     ) : (
-                      <div className="text-white/60 text-sm text-center py-2">
-                        Sipariş ürünleri yüklenemedi
-                      </div>
+                      <p className="text-white/60">Ürün bilgisi bulunamadı</p>
                     )}
                   </div>
                 </div>
 
-                {order.address && (
-                  <div className="mb-4 p-3 bg-white/5 rounded-lg">
-                    <div className="flex items-start gap-2">
-                      <MapPinIcon className="w-4 h-4 text-white/60 mt-0.5" />
-                      <div>
-                        <div className="text-white text-sm font-medium">{order.address.title}</div>
-                        <div className="text-white/80 text-sm">{order.address.fullAddress}</div>
-                        {order.phone && (
-                          <div className="text-white/60 text-sm mt-1">📞 {order.phone}</div>
-                        )}
+                {/* Delivery Info */}
+                {order.deliveryAddress && (
+                  <div className="mb-4 p-4 bg-white/10 rounded-lg">
+                    <h4 className="text-white/80 text-sm font-medium mb-2 flex items-center gap-2">
+                      <MapPinIcon className="w-4 h-4" />
+                      Teslimat Bilgileri
+                    </h4>
+                    <p className="text-white text-sm">{order.deliveryAddress.address}</p>
+                    {order.deliveryAddress.details && (
+                      <p className="text-white/60 text-sm">Detay: {order.deliveryAddress.details}</p>
+                    )}
+                    {order.deliveryAddress.coordinates && (
+                      <div className="flex items-center gap-2 mt-2">
+                        <span className="text-white/60 text-xs">
+                          Konum: {order.deliveryAddress.coordinates.lat.toFixed(6)}, {order.deliveryAddress.coordinates.lng.toFixed(6)}
+                        </span>
+                        <button
+                          onClick={() => window.open(`https://maps.google.com?q=${order.deliveryAddress.coordinates.lat},${order.deliveryAddress.coordinates.lng}`, '_blank')}
+                          className="text-blue-300 hover:text-blue-200 text-xs underline"
+                        >
+                          Haritada Göster
+                        </button>
                       </div>
-                    </div>
+                    )}
+                    {order.note && (
+                      <p className="text-yellow-300 text-sm mt-2">Not: {order.note}</p>
+                    )}
                   </div>
                 )}
 
+                {/* Status and Actions */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <span className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(order.status)}`}>
+                    <span className={`px-3 py-1 rounded-full text-sm font-medium flex items-center gap-2 ${getStatusColor(order.status)}`}>
                       {getStatusIcon(order.status)}
                       {getStatusText(order.status)}
                     </span>
-                    
                     <span className="text-white/60 text-sm">
-                      {(() => {
-                        try {
-                          if (!order.createdAt) return 'Tarih bilinmiyor';
-                          
-                          let orderDate: Date;
-                          const createdAt = order.createdAt as any;
-                          
-                          if (typeof createdAt === 'string') {
-                            orderDate = new Date(createdAt);
-                          } else if (createdAt instanceof Date) {
-                            orderDate = createdAt;
-                          } else if (createdAt && typeof createdAt === 'object' && typeof createdAt.toDate === 'function') {
-                            orderDate = createdAt.toDate();
-                          } else {
-                            orderDate = new Date(createdAt);
-                          }
-                          
-                          if (isNaN(orderDate.getTime())) {
-                            return 'Geçersiz tarih';
-                          }
-                          
-                          return formatDistanceToNow(orderDate, { addSuffix: true, locale: tr });
-                        } catch (error) {
-                          console.warn('Tarih formatı hatası:', error);
-                          return 'Tarih hatası';
-                        }
-                      })()}
+                      {formatDistanceToNow(
+                        order.createdAt instanceof Date 
+                          ? order.createdAt 
+                          : new Date(order.createdAt),
+                        { addSuffix: true, locale: tr }
+                      )}
                     </span>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {getNextStatuses(order.status).map((status) => (
+                    {getNextStatuses(order.status).map((nextStatus) => (
                       <button
-                        key={status}
-                        onClick={() => handleStatusUpdate(order.id, status)}
+                        key={nextStatus}
+                        onClick={() => handleStatusUpdate(order.id, nextStatus)}
                         className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors duration-300 ${
-                          status === 'cancelled' 
-                            ? 'bg-red-500 hover:bg-red-600 text-white'
-                            : 'bg-green-500 hover:bg-green-600 text-white'
+                          nextStatus === 'cancelled' 
+                            ? 'bg-red-500 hover:bg-red-600 text-white' 
+                            : 'bg-white/20 hover:bg-white/30 text-white'
                         }`}
                       >
-                        {getStatusText(status)}
+                        {getStatusText(nextStatus)}
                       </button>
                     ))}
-
                     <Link
                       href={`/admin/orders/${order.id}`}
                       className="bg-blue-500 hover:bg-blue-600 text-white p-2 rounded-lg transition-colors duration-300"
-                      title="Detayları Görüntüle"
                     >
                       <EyeIcon className="w-4 h-4" />
                     </Link>
                   </div>
                 </div>
-
-                {(order.orderNote || order.adminNote) && (
-                  <div className="mt-4 p-3 bg-white/10 rounded-lg">
-                    {order.orderNote && (
-                      <div className="mb-2">
-                        <span className="text-white/80 text-sm font-medium">Müşteri Notu: </span>
-                        <span className="text-white text-sm">{order.orderNote}</span>
-                      </div>
-                    )}
-                    {order.adminNote && (
-                      <div>
-                        <span className="text-yellow-300 text-sm font-medium">Admin Notu: </span>
-                        <span className="text-white text-sm">{order.adminNote}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
             </div>
           </div>
         ))}
+
+        {filteredOrders.length === 0 && (
+          <div className="text-center py-12">
+            <p className="text-white/60 text-lg">Sipariş bulunamadı</p>
+          </div>
+        )}
       </div>
-
-      {filteredOrders.length === 0 && !loading && (
-        <div className="text-center py-12">
-          <div className="text-6xl mb-4">📋</div>
-          <h3 className="text-white text-xl font-semibold mb-2">Sipariş bulunamadı</h3>
-          <p className="text-white/60">
-            {filters.search || filters.status 
-              ? 'Arama kriterlerinize uygun sipariş bulunamadı'
-              : 'Henüz hiç sipariş alınmamış'
-            }
-          </p>
-        </div>
-      )}
-
-      <Toaster 
-        position="top-right"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: 'rgba(0, 0, 0, 0.8)',
-            color: '#fff',
-            backdropFilter: 'blur(10px)',
-          },
-        }}
-      />
     </div>
   );
 }

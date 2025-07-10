@@ -1,7 +1,7 @@
 // app/admin/products/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Product } from '@/types';
@@ -32,7 +32,7 @@ export default function AdminProductsPage() {
 
   useEffect(() => {
     fetchProducts();
-  }, [filters]);
+  }, [search, filters]);
 
   const fetchProducts = async () => {
     try {
@@ -140,9 +140,19 @@ export default function AdminProductsPage() {
     }
   };
 
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(search.toLowerCase()) ||
-    product.description.toLowerCase().includes(search.toLowerCase())
+  // Debounce search/filter
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      fetchProducts();
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [search, filters]);
+
+  const filteredProducts = useMemo(() =>
+    products.filter(product =>
+      product.name.toLowerCase().includes(search.toLowerCase()) ||
+      product.description.toLowerCase().includes(search.toLowerCase())
+    ), [products, search]
   );
 
   const categories = [
