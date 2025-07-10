@@ -106,6 +106,10 @@ export async function POST(request: NextRequest) {
       estimatedDeliveryTime: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 dakika
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      orderNumber: '',
+      paymentStatus: 'pending',
+      note: undefined,
+      deliveryAddress: undefined
     };
 
     await adminDb.collection('orders').doc(orderId).set(orderData);

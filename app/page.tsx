@@ -114,16 +114,16 @@ export default function HomePage() {
     }
     
     // Diğer filtreler
-    if (filters.vegetarian && !product.tags.includes('vejetaryen')) {
+    if (filters.vegetarian && !product.tags.includes('Vejetaryen')) {
       return false;
     }
-    if (filters.spicy && !product.tags.includes('acili')) {
+    if (filters.spicy && !product.tags.includes('Acili')) {
       return false;
     }
     if (filters.discount && product.discount === 0) {
       return false;
     }
-    if (filters.popular && !product.tags.includes('populer') && !product.tags.includes('popular') && !product.tags.includes('cok-satan')) {
+    if (filters.popular && !product.tags.includes('Populer') && !product.tags.includes('Popular') && !product.tags.includes('cok-satan')) {
       return false;
     }
     

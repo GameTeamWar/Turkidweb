@@ -2,6 +2,8 @@
 
 // Product option types from admin types
 export interface ProductOption {
+  label: string;
+  values: any;
   id: string;
   name: string;
   minSelect: number;
@@ -80,6 +82,11 @@ export interface Address {
 }
 
 export interface Order {
+  note: any;
+  note: ReactNode;
+  deliveryAddress: any;
+  deliveryAddress: any;
+  deliveryAddress: any;
   id: string;
   orderNumber: string;
   userId: string;
