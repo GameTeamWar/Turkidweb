@@ -130,8 +130,8 @@ export default function TagsPage() {
 
   const filteredTags = useMemo(() =>
     tags.filter(tag =>
-      tag.name.toLowerCase().includes(search.toLowerCase()) ||
-      tag.description.toLowerCase().includes(search.toLowerCase())
+      (tag.name?.toLowerCase() || '').includes(search.toLowerCase()) ||
+      (tag.description?.toLowerCase() || '').includes(search.toLowerCase())
     ), [tags, search]
   );
 

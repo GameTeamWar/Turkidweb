@@ -162,3 +162,86 @@ export async function PATCH(
     }, { status: 500 });
   }
 }
+
+// app/api/admin/orders/[id]/status/route.ts
+import { NextRequest, NextResponse } from 'next/server';
+import { adminDb } from '@/lib/firebase-admin';
+import { getServerSession } from 'next-auth/next';
+import { authConfig } from '@/lib/auth';
+import { ApiResponse } from '@/types';
+import type { Session } from 'next-auth';
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await getServerSession(authConfig) as Session | null;
+    
+    if (!session || (session.user as any)?.role !== 'admin') {
+      return NextResponse.json<ApiResponse>({
+        success: false,
+        error: 'Yetkisiz erişim',
+      }, { status: 401 });
+    }
+
+    if (!adminDb) {
+      return NextResponse.json<ApiResponse>({
+        success: false,
+        error: 'Veritabanı bağlantısı mevcut değil',
+      }, { status: 500 });
+    }
+
+    const { status, updatedBy } = await request.json();
+
+    if (!status) {
+      return NextResponse.json<ApiResponse>({
+        success: false,
+        error: 'Durum bilgisi gerekli',
+      }, { status: 400 });
+    }
+
+    const validStatuses = ['pending', 'confirmed', 'preparing', 'ready', 'out_for_delivery', 'delivered', 'cancelled'];
+    if (!validStatuses.includes(status)) {
+      return NextResponse.json<ApiResponse>({
+        success: false,
+        error: 'Geçersiz durum',
+      }, { status: 400 });
+    }
+
+    const orderRef = adminDb.collection('orders').doc(params.id);
+    const orderDoc = await orderRef.get();
+
+    if (!orderDoc.exists) {
+      return NextResponse.json<ApiResponse>({
+        success: false,
+        error: 'Sipariş bulunamadı',
+      }, { status: 404 });
+    }
+
+    const updateData = {
+      status,
+      updatedAt: new Date().toISOString(),
+      updatedBy: updatedBy || 'Admin',
+    };
+
+    // Add delivery timestamp for delivered orders
+    if (status === 'delivered') {
+      updateData.deliveredAt = new Date().toISOString();
+    }
+
+    await orderRef.update(updateData);
+
+    return NextResponse.json<ApiResponse>({
+      success: true,
+      message: 'Sipariş durumu güncellendi',
+    });
+
+  } catch (error) {
+    console.error('Update order status error:', error);
+    return NextResponse.json<ApiResponse>({
+      success: false,
+      error: 'Sipariş durumu güncellenirken bir hata oluştu',
+    }, { status: 500 });
+  }
+}

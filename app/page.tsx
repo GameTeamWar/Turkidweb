@@ -182,13 +182,13 @@ export default function HomePage() {
               <div className="text-6xl mb-4">🍽️</div>
               <div>Bu kategoride ürün bulunamadı</div>
               <p className="text-white/60 mt-2">
-                Kategori: {currentCategory} - Lütfen başka bir kategori seçin veya filtreleri kontrol edin
+                Kategori: {currentCategory || 'Tümü'} - Lütfen başka bir kategori seçin veya filtreleri kontrol edin
               </p>
               {process.env.NODE_ENV === 'development' && (
                 <div className="mt-4 p-4 bg-white/10 rounded-lg text-left max-w-md mx-auto">
                   <p className="text-xs text-white/80">Debug Info:</p>
                   <p className="text-xs text-white/60">Total products: {products.length}</p>
-                  <p className="text-xs text-white/60">Current category: {currentCategory}</p>
+                  <p className="text-xs text-white/60">Current category: {currentCategory || 'Tümü'}</p>
                   <p className="text-xs text-white/60">Active filters: {Object.entries(filters).filter(([k,v]) => v).map(([k]) => k).join(', ') || 'none'}</p>
                 </div>
               )}

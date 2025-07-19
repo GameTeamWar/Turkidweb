@@ -114,6 +114,7 @@ export default function SignUpPage() {
                   value: /^[a-zA-ZğüşıöçĞÜŞİÖÇ\s]+$/,
                   message: 'Sadece harf ve boşluk kullanabilirsiniz',
                 },
+                validate: value => value?.trim().length >= 2 || 'Ad soyad en az 2 karakter olmalıdır'
               })}
               className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-300"
               placeholder="Adınız Soyadınız"

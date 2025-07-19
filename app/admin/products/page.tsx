@@ -150,8 +150,8 @@ export default function AdminProductsPage() {
 
   const filteredProducts = useMemo(() =>
     products.filter(product =>
-      product.name.toLowerCase().includes(search.toLowerCase()) ||
-      product.description.toLowerCase().includes(search.toLowerCase())
+      (product.name?.toLowerCase() || '').includes(search.toLowerCase()) ||
+      (product.description?.toLowerCase() || '').includes(search.toLowerCase())
     ), [products, search]
   );
 

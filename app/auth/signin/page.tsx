@@ -89,6 +89,7 @@ export default function SignInPage() {
                   value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
                   message: 'Geçerli bir email adresi girin',
                 },
+                validate: value => value?.trim().length > 0 || 'Email adresi gerekli'
               })}
               className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-300"
               placeholder="ornek@email.com"
@@ -111,6 +112,7 @@ export default function SignInPage() {
                   value: 6,
                   message: 'Şifre en az 6 karakter olmalıdır',
                 },
+                validate: value => value?.length >= 6 || 'Şifre en az 6 karakter olmalıdır'
               })}
               className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-white/50 transition-all duration-300"
               placeholder="••••••••"

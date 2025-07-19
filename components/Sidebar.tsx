@@ -137,10 +137,10 @@ export function Sidebar({
                   />
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-lg">{filter.icon}</span>
-                      <span className="font-medium">{filter.label}</span>
+                      <span>{filter.icon}</span>
+                      <span>{filter.label}</span>
                     </div>
-                    <div className="text-white/60 text-xs">{filter.description}</div>
+                    <div className="text-xs text-white/40">{filter.description}</div>
                   </div>
                 </label>
               ))}

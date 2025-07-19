@@ -122,7 +122,7 @@ export default function AnalyticsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-white/80 text-sm font-medium">Toplam Gelir</p>
-              <p className="text-2xl font-bold text-white">₺{analytics?.totalRevenue.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-white">₺{analytics?.totalRevenue?.toLocaleString() || '0'}</p>
               <p className="text-green-400 text-sm mt-1">+12.3% önceki döneme göre</p>
             </div>
             <div className="p-3 bg-green-500/20 rounded-full">
@@ -135,7 +135,7 @@ export default function AnalyticsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-white/80 text-sm font-medium">Toplam Sipariş</p>
-              <p className="text-2xl font-bold text-white">{analytics?.totalOrders.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-white">{analytics?.totalOrders?.toLocaleString() || '0'}</p>
               <p className="text-blue-400 text-sm mt-1">+8.1% önceki döneme göre</p>
             </div>
             <div className="p-3 bg-blue-500/20 rounded-full">
@@ -148,7 +148,7 @@ export default function AnalyticsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-white/80 text-sm font-medium">Ortalama Sipariş</p>
-              <p className="text-2xl font-bold text-white">₺{analytics?.averageOrderValue.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-white">₺{analytics?.averageOrderValue?.toFixed(2) || '0.00'}</p>
               <p className="text-purple-400 text-sm mt-1">+3.7% önceki döneme göre</p>
             </div>
             <div className="p-3 bg-purple-500/20 rounded-full">
@@ -161,7 +161,7 @@ export default function AnalyticsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-white/80 text-sm font-medium">Paket Sayısı</p>
-              <p className="text-2xl font-bold text-white">{analytics?.totalOrders.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-white">{analytics?.totalOrders?.toLocaleString() || '0'}</p>
               <p className="text-orange-400 text-sm mt-1">+15.2% önceki döneme göre</p>
             </div>
             <div className="p-3 bg-orange-500/20 rounded-full">
@@ -210,19 +210,19 @@ export default function AnalyticsPage() {
         <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6">
           <h3 className="text-xl font-semibold text-white mb-4">En Çok Satan Ürünler</h3>
           <div className="space-y-4">
-            {analytics?.topProducts.slice(0, 8).map((item, index) => (
+            {analytics?.topProducts?.slice(0, 8).map((item, index) => (
               <div key={index} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
                     {index + 1}
                   </div>
                   <div>
-                    <div className="text-white font-medium">{item.product?.name}</div>
-                    <div className="text-white/60 text-sm">{item.sales} adet satıldı</div>
+                    <div className="text-white font-medium">{item.product?.name || 'Bilinmeyen Ürün'}</div>
+                    <div className="text-white/60 text-sm">{item.sales || 0} adet satıldı</div>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-white font-bold">₺{item.revenue?.toFixed(2)}</div>
+                  <div className="text-white font-bold">₺{item.revenue?.toFixed(2) || '0.00'}</div>
                   <div className="text-white/60 text-sm">toplam gelir</div>
                 </div>
               </div>
@@ -237,7 +237,7 @@ export default function AnalyticsPage() {
             <div className="bg-white/5 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <span className="text-white/80">Yeni Kullanıcılar</span>
-                <span className="text-green-400 font-bold">{analytics?.userStats.newUsers}</span>
+                <span className="text-green-400 font-bold">{analytics?.userStats?.newUsers || 0}</span>
               </div>
               <div className="w-full bg-white/20 rounded-full h-2 mt-2">
                 <div className="bg-green-400 h-2 rounded-full" style={{ width: '65%' }}></div>
@@ -247,7 +247,7 @@ export default function AnalyticsPage() {
             <div className="bg-white/5 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <span className="text-white/80">Aktif Kullanıcılar</span>
-                <span className="text-blue-400 font-bold">{analytics?.userStats.activeUsers}</span>
+                <span className="text-blue-400 font-bold">{analytics?.userStats?.activeUsers || 0}</span>
               </div>
               <div className="w-full bg-white/20 rounded-full h-2 mt-2">
                 <div className="bg-blue-400 h-2 rounded-full" style={{ width: '78%' }}></div>
@@ -257,7 +257,7 @@ export default function AnalyticsPage() {
             <div className="bg-white/5 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <span className="text-white/80">Geri Dönen Müşteriler</span>
-                <span className="text-purple-400 font-bold">{analytics?.userStats.returningUsers}</span>
+                <span className="text-purple-400 font-bold">{analytics?.userStats?.returningUsers || 0}</span>
               </div>
               <div className="w-full bg-white/20 rounded-full h-2 mt-2">
                 <div className="bg-purple-400 h-2 rounded-full" style={{ width: '42%' }}></div>

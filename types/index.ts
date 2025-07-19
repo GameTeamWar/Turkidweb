@@ -38,6 +38,8 @@ export interface Product {
 }
 
 export interface CartItem extends Product {
+  [x: string]: string;
+  productId: string;
   quantity: number;
   selectedOptions?: Record<string, string>;
   cartKey: string;
@@ -142,6 +144,8 @@ export interface Notification {
 
 // Store types for Zustand
 export interface CartStore {
+  getDiscountAmount(): unknown;
+  appliedCoupon: any;
   items: CartItem[];
   addItem: (product: Product, options?: Record<string, string>) => void;
   removeItem: (cartKey: string) => void;

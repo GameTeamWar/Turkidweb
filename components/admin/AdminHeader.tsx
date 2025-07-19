@@ -110,8 +110,8 @@ export function AdminHeader({ onMenuToggle }: AdminHeaderProps) {
               {profileDropdownOpen && (
                 <div className="absolute top-full right-0 mt-2 w-48 bg-white/90 backdrop-blur-lg border border-white/50 rounded-xl shadow-xl z-50">
                   <div className="p-3 border-b border-white/20">
-                    <div className="text-sm font-medium text-gray-800">{session?.user?.name}</div>
-                    <div className="text-xs text-gray-600">{session?.user?.email}</div>
+                    <div className="text-sm font-medium text-gray-800">{session?.user?.name || 'Kullanıcı'}</div>
+                    <div className="text-xs text-gray-600">{session?.user?.email || 'Email bulunamadı'}</div>
                   </div>
                   <div className="p-1">
                     <Link

@@ -1,4 +1,5 @@
-// next.config.js
+const path = require('path');
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
@@ -50,7 +51,7 @@ const nextConfig = {
         hostname: '**.freepik.com',
         port: '',
         pathname: '/**',
-      }
+      },
     ],
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
@@ -60,6 +61,12 @@ const nextConfig = {
     CUSTOM_KEY: process.env.CUSTOM_KEY,
   },
   webpack: (config, { isServer }) => {
+    // Alias tanımı
+    config.resolve.alias = {
+      ...(config.resolve.alias || {}),
+      '@': path.resolve(__dirname),
+    };
+
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -69,6 +76,7 @@ const nextConfig = {
         crypto: false,
       };
     }
+
     return config;
   },
   async headers() {
@@ -101,6 +109,6 @@ const nextConfig = {
       },
     ];
   },
-}
+};
 
-module.exports = nextConfig
+module.exports = nextConfig;

@@ -345,9 +345,9 @@ export default function AdminOrdersPage() {
     if (filters.search) {
       const search = filters.search.toLowerCase();
       return (
-        order.orderNumber.toLowerCase().includes(search) ||
-        order.userName.toLowerCase().includes(search) ||
-        order.userEmail.toLowerCase().includes(search)
+        (order.orderNumber?.toLowerCase() || '').includes(search) ||
+        (order.userName?.toLowerCase() || '').includes(search) ||
+        (order.userEmail?.toLowerCase() || '').includes(search)
       );
     }
     return true;
@@ -784,9 +784,9 @@ export default function AdminOrdersPage() {
                     </span>
                     <span className="text-white/60 text-sm">
                       {formatDistanceToNow(
-                        order.createdAt instanceof Date 
-                          ? order.createdAt 
-                          : new Date(order.createdAt),
+                        (order.createdAt && typeof order.createdAt === 'object' && order.createdAt instanceof Date)
+                          ? order.createdAt
+                          : new Date(order.createdAt as unknown as string),
                         { addSuffix: true, locale: tr }
                       )}
                     </span>

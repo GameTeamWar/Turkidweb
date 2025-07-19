@@ -36,7 +36,12 @@ declare global {
 export default function CheckoutPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const { items, clearCart, getTotalPrice } = useCartStore();
+  const { 
+    items, 
+    clearCart, 
+    getTotalPrice,
+    appliedCoupon,
+    getDiscountAmount  } = useCartStore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [location, setLocation] = useState<LocationData | null>(null);
   const [map, setMap] = useState<any>(null);
@@ -56,7 +61,9 @@ export default function CheckoutPage() {
     },
   });
 
-  const total = getTotalPrice();
+  const subtotal = getTotalPrice();
+  const discount = getDiscountAmount();
+  const total = Number(subtotal) - Number(discount);
 
   // Update location and get address
   const updateLocation = useCallback(async (coords: { lat: number; lng: number }) => {
@@ -88,9 +95,9 @@ export default function CheckoutPage() {
         lng: coords.lng,
         address: `Konum: ${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`
       };
-      
+
       setLocation(locationData);
-      setValue('fullAddress', locationData.address!);
+      setValue('fullAddress', locationData.address || '');
     }
   }, [setValue]);
 
@@ -206,7 +213,7 @@ export default function CheckoutPage() {
 
       const orderData = {
         items,
-        subtotal: total,
+        subtotal,
         tax: 0,
         total,
         phone: data.phone,
@@ -219,7 +226,9 @@ export default function CheckoutPage() {
             lng: location.lng
           },
           details: data.addressDetails || ''
-        }
+        },
+        appliedCoupon,
+        discountAmount: discount
       };
 
       const response = await fetch('/api/orders', {
@@ -502,15 +511,47 @@ export default function CheckoutPage() {
                 {/* Totals */}
                 <div className="space-y-3 mb-6 pt-4 border-t border-white/20">
                   <div className="flex justify-between text-white/80">
+                    <span>Ara Toplam:</span>
+                    <span>{subtotal.toFixed(2)} ₺</span>
+                  </div>
+                  
+                  {appliedCoupon && Number(discount) > 0 && (
+                    <div className="flex justify-between text-green-400">
+                      <span>İndirim ({appliedCoupon.code}):</span>
+                      <span>-{Number(discount).toFixed(2)} ₺</span>
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-between text-white/80">
                     <span>Teslimat:</span>
                     <span className="text-green-400 font-medium">Ücretsiz</span>
                   </div>
+                  
                   <div className="h-px bg-white/20"></div>
+                  
                   <div className="flex justify-between text-white text-xl font-bold">
                     <span>Toplam:</span>
                     <span>{total.toFixed(2)} ₺</span>
                   </div>
+                  
+                  {appliedCoupon && Number(discount) > 0 && (
+                    <div className="text-green-400 text-sm text-center">
+                      🎉 {Number(discount).toFixed(2)} ₺ tasarruf!
+                    </div>
+                  )}
                 </div>
+                
+                {/* Applied Coupon Info */}
+                {appliedCoupon && (
+                  <div className="bg-green-500/20 border border-green-500/30 rounded-lg p-3 mb-6">
+                    <div className="text-green-400 font-medium text-sm">
+                      ✅ {appliedCoupon.name}
+                    </div>
+                    <div className="text-green-300 text-xs">
+                      Kod: {appliedCoupon.code}
+                    </div>
+                  </div>
+                )}
                 
                 {/* Submit Button */}
                 <button

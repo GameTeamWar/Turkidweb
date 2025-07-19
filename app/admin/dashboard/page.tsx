@@ -46,7 +46,7 @@ export default function AdminDashboard() {
   const stats = [
     {
       name: 'Toplam Gelir',
-      value: `₺${analytics?.totalRevenue.toLocaleString() || '0'}`,
+      value: `₺${analytics?.totalRevenue?.toLocaleString() || '0'}`,
       icon: CurrencyDollarIcon,
       color: 'text-green-400',
       bg: 'bg-green-500/20',
@@ -54,7 +54,7 @@ export default function AdminDashboard() {
     },
     {
       name: 'Toplam Sipariş',
-      value: analytics?.totalOrders.toLocaleString() || '0',
+      value: analytics?.totalOrders?.toLocaleString() || '0',
       icon: ClipboardDocumentListIcon,
       color: 'text-blue-400',
       bg: 'bg-blue-500/20',
@@ -62,7 +62,7 @@ export default function AdminDashboard() {
     },
     {
       name: 'Toplam Kullanıcı',
-      value: analytics?.totalUsers.toLocaleString() || '0',
+      value: analytics?.totalUsers?.toLocaleString() || '0',
       icon: UserGroupIcon,
       color: 'text-purple-400',
       bg: 'bg-purple-500/20',
@@ -70,7 +70,7 @@ export default function AdminDashboard() {
     },
     {
       name: 'Toplam Ürün',
-      value: analytics?.totalProducts.toLocaleString() || '0',
+      value: analytics?.totalProducts?.toLocaleString() || '0',
       icon: ShoppingBagIcon,
       color: 'text-orange-400',
       bg: 'bg-orange-500/20',
@@ -181,20 +181,20 @@ export default function AdminDashboard() {
             </Link>
           </div>
           <div className="space-y-3">
-            {analytics?.recentOrders.slice(0, 5).map((order, index) => (
+            {analytics?.recentOrders?.slice(0, 5).map((order, index) => (
               <div key={index} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
                 <div>
-                  <div className="text-white font-medium">#{order.orderNumber || `ORD-${order.id?.slice(-6)}`}</div>
-                  <div className="text-white/60 text-sm">{order.userName}</div>
+                  <div className="text-white font-medium">#{order.orderNumber || `ORD-${order.id?.slice(-6) || 'N/A'}`}</div>
+                  <div className="text-white/60 text-sm">{order.userName || 'Bilinmeyen'}</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-white font-medium">₺{order.total?.toFixed(2)}</div>
+                  <div className="text-white font-medium">₺{order.total?.toFixed(2) || '0.00'}</div>
                   <div className={`text-xs px-2 py-1 rounded-full ${
                     order.status === 'delivered' ? 'bg-green-500/20 text-green-400' :
                     order.status === 'cancelled' ? 'bg-red-500/20 text-red-400' :
                     'bg-yellow-500/20 text-yellow-400'
                   }`}>
-                    {order.status}
+                    {order.status || 'unknown'}
                   </div>
                 </div>
               </div>
@@ -207,17 +207,17 @@ export default function AdminDashboard() {
       <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6">
         <h3 className="text-xl font-semibold text-white mb-4">En Çok Satan Ürünler</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {analytics?.topProducts.slice(0, 6).map((item, index) => (
+          {analytics?.topProducts?.slice(0, 6).map((item, index) => (
             <div key={index} className="bg-white/5 rounded-lg p-4">
               <div className="flex items-center gap-3">
                 <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center text-white font-bold">
                   {index + 1}
                 </div>
                 <div className="flex-1">
-                  <div className="text-white font-medium">{item.product?.name}</div>
-                  <div className="text-white/60 text-sm">{item.sales} satış</div>
+                  <div className="text-white font-medium">{item.product?.name || 'Bilinmeyen Ürün'}</div>
+                  <div className="text-white/60 text-sm">{item.sales || 0} satış</div>
                 </div>
-                <div className="text-white font-bold">₺{item.revenue?.toFixed(2)}</div>
+                <div className="text-white font-bold">₺{item.revenue?.toFixed(2) || '0.00'}</div>
               </div>
             </div>
           ))}

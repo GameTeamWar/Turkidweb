@@ -7,6 +7,7 @@ export const useCartStore = create<CartStore>()(
   persist(
     (set, get) => ({
       items: [],
+      appliedCoupon: null, // Yeni alan
 
       addItem: (product: Product, options?: Record<string, string>) => {
         const cartKey = `${product.id}-${JSON.stringify(options || {})}`;
@@ -59,7 +60,10 @@ export const useCartStore = create<CartStore>()(
       },
 
       clearCart: () => {
-        set({ items: [] });
+        set({ 
+          items: [],
+          appliedCoupon: null // Kupon da temizlensin
+        });
       },
 
       getTotalItems: () => {
@@ -69,10 +73,33 @@ export const useCartStore = create<CartStore>()(
       getTotalPrice: () => {
         return get().items.reduce((total, item) => total + (item.price * item.quantity), 0);
       },
+
+      setAppliedCoupon: (coupon) => set((state) => ({ ...state, appliedCoupon: coupon })),
+
+      getDiscountAmount: () => {
+        const { appliedCoupon } = get();
+        if (!appliedCoupon) return 0;
+
+        const subtotal = get().getTotalPrice();
+        
+        if (appliedCoupon.type === 'percentage') {
+          const discount = subtotal * (appliedCoupon.value / 100);
+          return Math.min(discount, appliedCoupon.maxDiscountAmount || Infinity);
+        } else {
+          return Math.min(appliedCoupon.value, subtotal);
+        }
+      },
+
+      getFinalTotal: () => {
+        const subtotal = Number(get().getTotalPrice()) || 0;
+        const discount = Number(get().getDiscountAmount()) || 0;
+        return Math.max(0, subtotal - discount);
+      },
     }),
     {
       name: 'cart-storage',
-      partialize: (state) => ({ items: state.items }),
+      partialize: (state) => ({ items: state.items, appliedCoupon: state.appliedCoupon }),
     }
   )
 );
+

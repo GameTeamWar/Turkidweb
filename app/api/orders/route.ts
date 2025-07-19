@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { items, paymentMethod, orderNote, address, phone } = body;
+    const { items, paymentMethod, orderNote, deliveryAddress, phone, appliedCoupon } = body;
 
     // Validation
     if (!items || !Array.isArray(items) || items.length === 0) {
@@ -109,10 +109,36 @@ export async function POST(request: NextRequest) {
       orderNumber: '',
       paymentStatus: 'pending',
       note: undefined,
-      deliveryAddress: undefined
+      deliveryAddress: deliveryAddress || undefined,
+      appliedCoupon: appliedCoupon || undefined
     };
 
     await adminDb.collection('orders').doc(orderId).set(orderData);
+
+    // If coupon was used, record the usage
+    if (appliedCoupon && adminDb) {
+      try {
+        // Increment coupon usage count
+        await adminDb.collection('coupons').doc(appliedCoupon.id).update({
+          usageCount: (appliedCoupon.usageCount || 0) + 1,
+          updatedAt: new Date().toISOString()
+        });
+
+        // Record user-specific usage
+        await adminDb.collection('couponUsage').add({
+          couponId: appliedCoupon.id,
+          couponCode: appliedCoupon.code,
+          userEmail: session.user?.email,
+          orderId: orderId,
+          usedAt: new Date().toISOString(),
+          orderTotal: total,
+          discountAmount: body.discountAmount || 0
+        });
+      } catch (couponError) {
+        console.error('Error recording coupon usage:', couponError);
+        // Don't fail the order if coupon tracking fails
+      }
+    }
 
     // Create order status history
     await adminDb.collection('orders').doc(orderId).collection('statusHistory').add({

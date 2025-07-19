@@ -172,7 +172,7 @@ export default function CategoriesPage() {
                 <tr key={category.id} className="hover:bg-white/5 transition-colors duration-300">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      <span className="text-white font-medium">{category.sortOrder}</span>
+                      <span className="text-white font-medium">{category.sortOrder || 0}</span>
                       <div className="flex flex-col gap-1">
                         <button
                           onClick={() => handleReorderCategory(category.id, 'up')}
@@ -192,11 +192,11 @@ export default function CategoriesPage() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-2xl">{category.icon}</span>
+                    <span className="text-2xl">{category.icon || '📁'}</span>
                   </td>
                   <td className="px-6 py-4">
                     <div>
-                      <div className="text-white font-semibold">{category.name}</div>
+                      <div className="text-white font-semibold">{category.name || 'Adsız Kategori'}</div>
                       {category.description && (
                         <div className="text-white/60 text-sm mt-1">{category.description}</div>
                       )}
@@ -204,7 +204,7 @@ export default function CategoriesPage() {
                   </td>
                   <td className="px-6 py-4">
                     <code className="bg-white/20 text-orange-300 px-2 py-1 rounded text-sm">
-                      {category.slug}
+                      {category.slug || 'slug-yok'}
                     </code>
                   </td>
                   <td className="px-6 py-4">
