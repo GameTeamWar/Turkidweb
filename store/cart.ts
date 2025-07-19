@@ -19,14 +19,14 @@ export const useCartStore = create<CartStore>()(
             return {
               items: state.items.map(item =>
                 item.cartKey === cartKey
-                  ? { ...item, quantity: item.quantity + 1 }
+                  ? { ...item, quantity: String(Number(item.quantity) + 1) }
                   : item
               ),
             };
           } else {
             const newItem: CartItem = {
               ...product,
-              quantity: 1,
+              quantity: "1",
               selectedOptions: options,
               cartKey,
             };
@@ -53,7 +53,7 @@ export const useCartStore = create<CartStore>()(
         set((state) => ({
           items: state.items.map(item =>
             item.cartKey === cartKey
-              ? { ...item, quantity }
+              ? { ...item, quantity: String(quantity) }
               : item
           ),
         }));
@@ -67,11 +67,11 @@ export const useCartStore = create<CartStore>()(
       },
 
       getTotalItems: () => {
-        return get().items.reduce((total, item) => total + item.quantity, 0);
+        return get().items.reduce((total, item) => total + Number(item.quantity), 0);
       },
 
       getTotalPrice: () => {
-        return get().items.reduce((total, item) => total + (item.price * item.quantity), 0);
+        return get().items.reduce((total, item) => total + (item.price * Number(item.quantity)), 0);
       },
 
       setAppliedCoupon: (coupon) => set((state) => ({ ...state, appliedCoupon: coupon })),
@@ -102,4 +102,6 @@ export const useCartStore = create<CartStore>()(
     }
   )
 );
+
+
 

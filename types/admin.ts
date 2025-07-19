@@ -30,7 +30,24 @@ export interface Coupon {
   createdAt: string;
   updatedAt: string;
 }
-
+export interface CartItem {
+  productId: string;
+  name: string;
+  price: number;
+  quantity: number;
+  selectedOptions?: Record<string, string>;
+  cartKey: string;
+  //
+}
+export interface Cart {
+  id: string;
+  userId: string;
+  items: CartItem[];
+  totalAmount: number;
+  totalQuantity: number;
+  createdAt: string;
+  updatedAt: string;
+}
 export interface AnalyticsData {
   totalRevenue: number;
   totalOrders: number;
