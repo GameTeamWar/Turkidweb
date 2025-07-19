@@ -155,7 +155,8 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       appliedCoupon: appliedCoupon || undefined,
-      discountAmount: discountAmount || 0
+      discountAmount: discountAmount || 0,
+      note: undefined
     };
 
     console.log('📋 Order data prepared:', {

@@ -1,4 +1,4 @@
-// lib/auth.ts
+// lib/auth.ts - authOptions adıyla da export edelim
 import { NextAuthOptions } from 'next-auth';
 import GoogleProvider from 'next-auth/providers/google';
 import CredentialsProvider from 'next-auth/providers/credentials';
@@ -6,7 +6,7 @@ import { adminDb } from './firebase-admin';
 import bcrypt from 'bcryptjs';
 import type { User } from 'next-auth';
 
-export const authConfig: NextAuthOptions = {
+export const authOptions: NextAuthOptions = {
   providers: [
     // Google Provider - sadece credentials varsa ekle
     ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET ? [
@@ -182,6 +182,9 @@ export const authConfig: NextAuthOptions = {
   },
   secret: process.env.NEXTAUTH_SECRET,
 };
+
+// Backward compatibility için authConfig'i de export edelim
+export const authConfig = authOptions;
 
 // Type declarations for NextAuth v4
 declare module 'next-auth' {

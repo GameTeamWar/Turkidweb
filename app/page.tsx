@@ -57,9 +57,9 @@ export default function HomePage() {
         
         // Popüler kategorisini başa ekle
         const popularCategory = {
-          id: 'populer',
+          id: 'Populer',
           name: 'Popüler Ürünler',
-          slug: 'populer',
+          slug: 'Populer',
           icon: '🔥',
           isActive: true,
           sortOrder: 0
@@ -96,10 +96,10 @@ export default function HomePage() {
   // Remove console logs in production
   const filteredProducts = useMemo(() => products.filter(product => {
     // Kategori filtresi - güncellenmiş mantık
-    if (currentCategory === 'populer') {
+    if (currentCategory === 'Populer') {
       // Popüler etiketine sahip ürünleri göster
-      const hasPopularTag = product.tags.includes('populer') || 
-                           product.tags.includes('popular') || 
+      const hasPopularTag = product.tags.includes('Populer') || 
+                           product.tags.includes('Popular') || 
                            product.tags.includes('cok-satan');
       if (!hasPopularTag) {
         return false;
@@ -165,7 +165,7 @@ export default function HomePage() {
             <h1 className="text-white text-3xl font-bold">
               {getCategoryTitle(currentCategory)}
             </h1>
-            {currentCategory === 'populer' && (
+            {currentCategory === 'Populer' && (
               <p className="text-white/80 mt-2">En çok tercih edilen lezzetlerimiz</p>
             )}
             <p className="text-white/60 text-sm mt-1">
@@ -184,14 +184,7 @@ export default function HomePage() {
               <p className="text-white/60 mt-2">
                 Kategori: {currentCategory || 'Tümü'} - Lütfen başka bir kategori seçin veya filtreleri kontrol edin
               </p>
-              {process.env.NODE_ENV === 'development' && (
-                <div className="mt-4 p-4 bg-white/10 rounded-lg text-left max-w-md mx-auto">
-                  <p className="text-xs text-white/80">Debug Info:</p>
-                  <p className="text-xs text-white/60">Total products: {products.length}</p>
-                  <p className="text-xs text-white/60">Current category: {currentCategory || 'Tümü'}</p>
-                  <p className="text-xs text-white/60">Active filters: {Object.entries(filters).filter(([k,v]) => v).map(([k]) => k).join(', ') || 'none'}</p>
-                </div>
-              )}
+            
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
