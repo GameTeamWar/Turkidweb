@@ -34,26 +34,15 @@ export async function GET(
         userName: session.user?.name || 'Test User',
         items: [
           {
-              id: 'product1',
-              name: 'Klasik Cheeseburger',
-              price: 45.90,
-              quantity: 1,
-              image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop',
-              selectedOptions: {
-                  spice: 'Baharatlı',
-                  sauce: 'Ketçap'
-              },
-              productId: '',
-              cartKey: '',
-              description: '',
-              categories: [],
-              discount: 0,
-              tags: [],
-              hasOptions: false,
-              options: [],
-              isActive: false,
-              createdAt: '',
-              updatedAt: ''
+            id: 'product1',
+            name: 'Klasik Cheeseburger',
+            price: 45.90,
+            quantity: 1,
+            image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop',
+            selectedOptions: {
+              spice: 'Baharatlı',
+              sauce: 'Ketçap'
+            }
           }
         ],
         subtotal: 45.90,

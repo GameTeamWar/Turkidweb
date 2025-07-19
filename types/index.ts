@@ -84,6 +84,10 @@ export interface Address {
 }
 
 export interface Order {
+  discountAmount: any;
+  appliedCoupon: any;
+  discountAmount: number;
+  appliedCoupon: boolean;
   note: any;
   note: ReactNode;
   deliveryAddress: any;
