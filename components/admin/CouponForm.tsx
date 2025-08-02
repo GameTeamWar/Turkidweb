@@ -129,11 +129,15 @@ export function CouponForm({ couponId, initialData }: CouponFormProps) {
     } catch (error) {
       console.error('Submit error:', error);
       
+      let errorMessage = 'Bir hata oluştu';
+      
       if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
-        toast.error('Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin.');
-      } else {
-        toast.error('Bir hata oluştu: ' + error.message);
+        errorMessage = 'Sunucuya bağlanılamadı. İnternet bağlantınızı kontrol edin.';
+      } else if (error instanceof Error) {
+        errorMessage = 'Bir hata oluştu: ' + error.message;
       }
+      
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

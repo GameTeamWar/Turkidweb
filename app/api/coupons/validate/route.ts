@@ -28,7 +28,7 @@ export async function POST(request: NextRequest) {
     if (!adminDb) {
       return NextResponse.json<ApiResponse>({
         success: false,
-        error: 'Kupon sistemi şu anda kullanılamıyor',
+        error: 'Database connection not available',
       }, { status: 503 });
     }
 

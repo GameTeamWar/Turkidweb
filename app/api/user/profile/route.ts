@@ -12,26 +12,8 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let profile;
-
-    // Firebase Admin yoksa mock data döndür
     if (!adminDb) {
-      console.warn('⚠️ Firebase Admin not available, using mock profile data');
-      
-      profile = {
-        id: session.user.email,
-        name: session.user.name || 'BAGLANTI HATASI - FİREBASE',
-        email: session.user.email,
-        phone: '+90 555 123 4567',
-        address: 'Test Address, Istanbul',
-        dateOfBirth: '1990-01-01',
-        avatar: session.user.image || '',
-        totalOrders: 5,
-        totalSpent: 250.75,
-        memberSince: '2024-01-01T00:00:00.000Z',
-      };
-
-      return NextResponse.json({ success: true, profile });
+      return NextResponse.json({ error: 'Database connection not available' }, { status: 503 });
     }
 
     // Get user profile from Firestore
@@ -53,7 +35,7 @@ export async function GET() {
     const totalOrders = orders.length;
     const totalSpent = orders.reduce((sum, order) => sum + (order.total || 0), 0);
 
-    profile = {
+    const profile = {
       id: userDoc.id,
       name: userData?.name || session.user.name || '',
       email: session.user.email,
@@ -88,10 +70,8 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Name is required and must be at least 2 characters' }, { status: 400 });
     }
 
-    // Firebase Admin yoksa sadece success döndür
     if (!adminDb) {
-      console.warn('⚠️ Firebase Admin not available, profile update skipped');
-      return NextResponse.json({ success: true });
+      return NextResponse.json({ error: 'Database connection not available' }, { status: 503 });
     }
 
     // Update user profile in Firestore

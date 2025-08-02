@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
         } else {
           products = products.filter(product => 
             (product.categories && product.categories.includes(category)) ||
-            product.category === category
+            (product as any).category === category
           );
         }
       }
@@ -139,116 +139,45 @@ export async function POST(request: NextRequest) {
     if (!adminDb) {
       return NextResponse.json<ApiResponse>({
         success: false,
-        error: 'Firebase Admin bağlantısı mevcut değil. Lütfen Firebase yapılandırmasını kontrol edin.',
-      }, { status: 500 });
+        error: 'Database connection not available',
+      }, { status: 503 });
     }
 
-    const body = await request.json();
-    const { 
-      name, 
-      description, 
-      price, 
-      originalPrice, 
-      image, 
-      categories, 
-      tags, 
-      hasOptions, 
-      options, 
-      stock, 
-      isActive 
-    } = body;
-
-    console.log('📝 Creating new product:', { name, categories, price });
-
-    // Validation
-    if (!name?.trim() || !description?.trim() || !price || !image?.trim()) {
+    const data = await request.json();
+    
+    // Validate required fields
+    if (!data.name || !data.description || !data.price || !data.categories || data.categories.length === 0) {
       return NextResponse.json<ApiResponse>({
         success: false,
-        error: 'Gerekli alanlar eksik (ad, açıklama, fiyat, görsel)',
+        error: 'Gerekli alanlar eksik',
       }, { status: 400 });
     }
 
-    if (!categories || !Array.isArray(categories) || categories.length === 0) {
-      return NextResponse.json<ApiResponse>({
-        success: false,
-        error: 'En az bir kategori seçmelisiniz',
-      }, { status: 400 });
-    }
-
-    if (price <= 0) {
-      return NextResponse.json<ApiResponse>({
-        success: false,
-        error: 'Fiyat 0\'dan büyük olmalıdır',
-      }, { status: 400 });
-    }
-
-    if (originalPrice && originalPrice <= 0) {
-      return NextResponse.json<ApiResponse>({
-        success: false,
-        error: 'Orijinal fiyat 0\'dan büyük olmalıdır',
-      }, { status: 400 });
-    }
-
-    if (stock !== undefined && stock !== null && stock < 0) {
-      return NextResponse.json<ApiResponse>({
-        success: false,
-        error: 'Stok miktarı 0\'dan küçük olamaz',
-      }, { status: 400 });
-    }
-
-    // Check if product name already exists
-    const existingProductQuery = await adminDb
-      .collection('products')
-      .where('name', '==', name.trim())
-      .get();
-
-    if (!existingProductQuery.empty) {
-      return NextResponse.json<ApiResponse>({
-        success: false,
-        error: 'Bu isimde bir ürün zaten mevcut',
-      }, { status: 400 });
-    }
-
-    // Calculate discount
-    let discount = 0;
-    if (originalPrice && price && originalPrice > price) {
-      discount = Math.round(((originalPrice - price) / originalPrice) * 100);
-    }
-
-    // Generate product ID
     const productId = `product_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
-    const productData: Product = {
-      id: productId,
-      name: name.trim(),
-      description: description.trim(),
-      price: parseFloat(price.toString()),
-      originalPrice: originalPrice ? parseFloat(originalPrice.toString()) : undefined,
-      image: image.trim(),
-      categories: Array.isArray(categories) ? categories : [],
-      category: categories[0], // Geriye uyumluluk için
-      discount,
-      tags: Array.isArray(tags) ? tags : [],
-      hasOptions: Boolean(hasOptions),
-      options: Array.isArray(options) ? options : [],
-      stock: stock !== undefined ? parseInt(stock.toString()) : undefined,
-      isActive: Boolean(isActive),
+    const newProduct: Omit<Product, 'id'> & { options?: any[] } = {
+      name: data.name.trim(),
+      description: data.description.trim(),
+      price: parseFloat(data.price.toString()),
+      originalPrice: data.originalPrice ? parseFloat(data.originalPrice.toString()) : undefined,
+      discount: data.discount || 0,
+      categories: data.categories,
+      image: data.image,
+      tags: data.tags || [],
+      hasOptions: data.hasOptions || false,
+      options: data.options || [],
+      stock: data.stock ? parseInt(data.stock.toString()) : undefined,
+      isActive: data.isActive !== undefined ? data.isActive : true,
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
 
-    console.log('💾 Saving product to Firebase:', productId);
-
-    await adminDb.collection('products').doc(productId).set(productData);
-
-    console.log('✅ Product created successfully');
+    await adminDb.collection('products').doc(productId).set(newProduct);
 
     return NextResponse.json<ApiResponse<Product>>({
       success: true,
-      message: 'Ürün başarıyla oluşturuldu',
-      data: productData,
+      data: { id: productId, ...newProduct },
     });
-
   } catch (error) {
     console.error('❌ Create product error:', error);
     return NextResponse.json<ApiResponse>({

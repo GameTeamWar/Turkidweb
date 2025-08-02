@@ -19,46 +19,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (!adminDb) {
-      // Mock teslimat bölgeleri
-      const mockDeliveryZones: DeliveryZone[] = [
-        {
-          id: 'zone_1',
-          name: 'Mersin Merkez',
-          coordinates: [
-            [34.6200, 36.8000], // Yaklaşık koordinatlar
-            [34.6400, 36.8000],
-            [34.6400, 36.8200],
-            [34.6200, 36.8200]
-          ],
-          isActive: true,
-          minOrderAmount: 50,
-          averageDeliveryTime: 30,
-          deliveryFee: 5,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        },
-        {
-          id: 'zone_2',
-          name: 'Akdeniz İlçesi',
-          coordinates: [
-            [34.6000, 36.7800],
-            [34.6300, 36.7800],
-            [34.6300, 36.8100],
-            [34.6000, 36.8100]
-          ],
-          isActive: true,
-          minOrderAmount: 75,
-          averageDeliveryTime: 45,
-          deliveryFee: 8,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }
-      ];
-
-      return NextResponse.json<ApiResponse<DeliveryZone[]>>({
-        success: true,
-        data: mockDeliveryZones,
-      });
+      return NextResponse.json<ApiResponse>({
+        success: false,
+        error: 'Database connection not available',
+      }, { status: 503 });
     }
 
     const snapshot = await adminDb.collection('deliveryZones').orderBy('name', 'asc').get();
@@ -103,6 +67,13 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    if (!adminDb) {
+      return NextResponse.json<ApiResponse>({
+        success: false,
+        error: 'Firebase Admin bağlantısı mevcut değil. Lütfen Firebase yapılandırmasını kontrol edin.',
+      }, { status: 500 });
+    }
+
     const zoneId = `zone_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
     const zoneData: DeliveryZone = {
@@ -116,14 +87,6 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
-
-    if (!adminDb) {
-      return NextResponse.json<ApiResponse<DeliveryZone>>({
-        success: true,
-        message: 'Teslimat bölgesi oluşturuldu (Mock Mode)',
-        data: zoneData,
-      });
-    }
 
     await adminDb.collection('deliveryZones').doc(zoneId).set(zoneData);
 

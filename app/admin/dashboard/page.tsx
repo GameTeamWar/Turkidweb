@@ -9,20 +9,34 @@ import {
   CurrencyDollarIcon,
   ShoppingBagIcon,
   UserGroupIcon,
-  ClipboardDocumentListIcon
+  ClipboardDocumentListIcon,
+  CalendarIcon,
+  ChartBarIcon
 } from '@heroicons/react/24/outline';
 
 export default function AdminDashboard() {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dateRange, setDateRange] = useState('month');
+  const [selectedPeriod, setSelectedPeriod] = useState({
+    start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
+    end: new Date().toISOString().split('T')[0]
+  });
 
   useEffect(() => {
     fetchAnalytics();
-  }, []);
+  }, [dateRange, selectedPeriod]);
 
   const fetchAnalytics = async () => {
     try {
-      const response = await fetch('/api/admin/analytics');
+      setLoading(true);
+      const params = new URLSearchParams({
+        range: dateRange,
+        start: selectedPeriod.start,
+        end: selectedPeriod.end
+      });
+      
+      const response = await fetch(`/api/admin/analytics?${params}`);
       const result = await response.json();
       
       if (result.success) {
@@ -69,12 +83,12 @@ export default function AdminDashboard() {
       change: '+5.4%'
     },
     {
-      name: 'Toplam Ürün',
-      value: analytics?.totalProducts?.toLocaleString() || '0',
-      icon: ShoppingBagIcon,
+      name: 'Ortalama Sipariş',
+      value: `₺${analytics?.averageOrderValue?.toFixed(2) || '0.00'}`,
+      icon: ChartBarIcon,
       color: 'text-orange-400',
       bg: 'bg-orange-500/20',
-      change: '+2.1%'
+      change: '+3.7%'
     },
   ];
 
@@ -84,14 +98,63 @@ export default function AdminDashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-white">Dashboard</h1>
-          <p className="text-white/70 mt-2">Turkid FastFood yönetim paneline hoş geldiniz</p>
+          <p className="text-white/70 mt-2">Turkid FastFood yönetim paneli - Detaylı analiz raporları</p>
         </div>
-        <div className="text-white/60 text-sm">
-          Son güncelleme: {new Date().toLocaleTimeString('tr-TR')}
+        
+        {/* Date Range Selector */}
+        <div className="flex items-center gap-4">
+          <div className="flex bg-white/10 rounded-lg p-1">
+            <button
+              onClick={() => setDateRange('day')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                dateRange === 'day' 
+                  ? 'bg-white text-orange-500' 
+                  : 'text-white hover:bg-white/20'
+              }`}
+            >
+              Günlük
+            </button>
+            <button
+              onClick={() => setDateRange('month')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                dateRange === 'month' 
+                  ? 'bg-white text-orange-500' 
+                  : 'text-white hover:bg-white/20'
+              }`}
+            >
+              Aylık
+            </button>
+            <button
+              onClick={() => setDateRange('year')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                dateRange === 'year' 
+                  ? 'bg-white text-orange-500' 
+                  : 'text-white hover:bg-white/20'
+              }`}
+            >
+              Yıllık
+            </button>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={selectedPeriod.start}
+              onChange={(e) => setSelectedPeriod(prev => ({ ...prev, start: e.target.value }))}
+              className="bg-white/20 border border-white/30 rounded-lg px-3 py-2 text-white text-sm"
+            />
+            <span className="text-white">-</span>
+            <input
+              type="date"
+              value={selectedPeriod.end}
+              onChange={(e) => setSelectedPeriod(prev => ({ ...prev, end: e.target.value }))}
+              className="bg-white/20 border border-white/30 rounded-lg px-3 py-2 text-white text-sm"
+            />
+          </div>
         </div>
       </div>
 
-      {/* Stats Grid */}
+      {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat) => {
           const Icon = stat.icon;
@@ -104,6 +167,7 @@ export default function AdminDashboard() {
                     <p className="text-2xl font-bold text-white">{stat.value}</p>
                     <span className="text-green-400 text-sm font-medium">{stat.change}</span>
                   </div>
+                  <p className="text-white/60 text-xs mt-1">önceki döneme göre</p>
                 </div>
                 <div className={`p-3 rounded-full ${stat.bg}`}>
                   <Icon className={`w-6 h-6 ${stat.color}`} />
@@ -118,24 +182,36 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Revenue Chart */}
         <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6">
-          <h3 className="text-xl font-semibold text-white mb-4">Aylık Gelir</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-semibold text-white">Gelir Analizi</h3>
+            <div className="text-white/60 text-sm">
+              {dateRange === 'day' ? 'Son 30 Gün' : 
+               dateRange === 'month' ? 'Son 12 Ay' : 'Son 5 Yıl'}
+            </div>
+          </div>
           <AnalyticsChart 
-            data={analytics?.monthlyRevenue || []} 
+            data={dateRange === 'day' ? analytics?.dailyRevenue || [] : analytics?.monthlyRevenue || []} 
             type="revenue"
           />
         </div>
 
         {/* Orders Chart */}
         <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6">
-          <h3 className="text-xl font-semibold text-white mb-4">Günlük Siparişler</h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-xl font-semibold text-white">Sipariş Analizi</h3>
+            <div className="text-white/60 text-sm">
+              {dateRange === 'day' ? 'Son 30 Gün' : 
+               dateRange === 'month' ? 'Son 12 Ay' : 'Son 5 Yıl'}
+            </div>
+          </div>
           <AnalyticsChart 
-            data={analytics?.dailyRevenue || []} 
+            data={dateRange === 'day' ? analytics?.dailyRevenue || [] : analytics?.monthlyRevenue || []} 
             type="orders"
           />
         </div>
       </div>
 
-      {/* Quick Actions & Recent Orders */}
+      {/* Quick Actions & User Stats */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Quick Actions */}
         <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6">
@@ -156,19 +232,82 @@ export default function AdminDashboard() {
               <div className="text-white font-medium">Yeni Kategori</div>
             </Link>
             <Link
-              href="/admin/coupons/add"
+              href="/admin/tags/add"
               className="bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 rounded-lg p-4 transition-colors group"
             >
-              <div className="text-purple-400 text-2xl mb-2">🎫</div>
-              <div className="text-white font-medium">Yeni Kupon</div>
+              <div className="text-purple-400 text-2xl mb-2">🏷️</div>
+              <div className="text-white font-medium">Yeni Etiket</div>
             </Link>
             <Link
-              href="/admin/users/add"
+              href="/admin/orders"
               className="bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/30 rounded-lg p-4 transition-colors group"
             >
-              <div className="text-orange-400 text-2xl mb-2">👤</div>
-              <div className="text-white font-medium">Yeni Kullanıcı</div>
+              <div className="text-orange-400 text-2xl mb-2">📋</div>
+              <div className="text-white font-medium">Siparişler</div>
             </Link>
+          </div>
+        </div>
+
+        {/* User Statistics */}
+        <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6">
+          <h3 className="text-xl font-semibold text-white mb-4">Kullanıcı İstatistikleri</h3>
+          <div className="space-y-4">
+            <div className="bg-white/5 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-white/80">Yeni Kullanıcılar</span>
+                <span className="text-green-400 font-bold">{analytics?.userStats?.newUsers || 0}</span>
+              </div>
+              <div className="w-full bg-white/20 rounded-full h-2 mt-2">
+                <div className="bg-green-400 h-2 rounded-full" style={{ width: '65%' }}></div>
+              </div>
+            </div>
+            
+            <div className="bg-white/5 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-white/80">Aktif Kullanıcılar</span>
+                <span className="text-blue-400 font-bold">{analytics?.userStats?.activeUsers || 0}</span>
+              </div>
+              <div className="w-full bg-white/20 rounded-full h-2 mt-2">
+                <div className="bg-blue-400 h-2 rounded-full" style={{ width: '78%' }}></div>
+              </div>
+            </div>
+            
+            <div className="bg-white/5 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-white/80">Geri Dönen Müşteriler</span>
+                <span className="text-purple-400 font-bold">{analytics?.userStats?.returningUsers || 0}</span>
+              </div>
+              <div className="w-full bg-white/20 rounded-full h-2 mt-2">
+                <div className="bg-purple-400 h-2 rounded-full" style={{ width: '42%' }}></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Top Products & Recent Orders */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Top Products */}
+        <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6">
+          <h3 className="text-xl font-semibold text-white mb-4">En Çok Satan Ürünler</h3>
+          <div className="space-y-4">
+            {analytics?.topProducts?.slice(0, 8).map((item, index) => (
+              <div key={index} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                    {index + 1}
+                  </div>
+                  <div>
+                    <div className="text-white font-medium">{item.product?.name || 'Bilinmeyen Ürün'}</div>
+                    <div className="text-white/60 text-sm">{item.sales || 0} adet satıldı</div>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-white font-bold">₺{item.revenue?.toFixed(2) || '0.00'}</div>
+                  <div className="text-white/60 text-sm">toplam gelir</div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -181,7 +320,7 @@ export default function AdminDashboard() {
             </Link>
           </div>
           <div className="space-y-3">
-            {analytics?.recentOrders?.slice(0, 5).map((order, index) => (
+            {analytics?.recentOrders?.slice(0, 8).map((order, index) => (
               <div key={index} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
                 <div>
                   <div className="text-white font-medium">#{order.orderNumber || `ORD-${order.id?.slice(-6) || 'N/A'}`}</div>
@@ -200,27 +339,6 @@ export default function AdminDashboard() {
               </div>
             ))}
           </div>
-        </div>
-      </div>
-
-      {/* Top Products */}
-      <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6">
-        <h3 className="text-xl font-semibold text-white mb-4">En Çok Satan Ürünler</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {analytics?.topProducts?.slice(0, 6).map((item, index) => (
-            <div key={index} className="bg-white/5 rounded-lg p-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-r from-orange-500 to-red-500 rounded-lg flex items-center justify-center text-white font-bold">
-                  {index + 1}
-                </div>
-                <div className="flex-1">
-                  <div className="text-white font-medium">{item.product?.name || 'Bilinmeyen Ürün'}</div>
-                  <div className="text-white/60 text-sm">{item.sales || 0} satış</div>
-                </div>
-                <div className="text-white font-bold">₺{item.revenue?.toFixed(2) || '0.00'}</div>
-              </div>
-            </div>
-          ))}
         </div>
       </div>
     </div>

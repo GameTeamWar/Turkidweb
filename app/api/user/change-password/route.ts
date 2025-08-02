@@ -1,10 +1,11 @@
-// app/api/user/profile/route.ts - authConfig kullanarak güncellenmiş
+// app/api/user/change-password/route.ts - Şifre değiştirme fonksiyonu için uygulanmış hali
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
-import { authConfig } from '@/lib/auth'; // authOptions yerine authConfig
+import { authConfig } from '@/lib/auth';
 import { adminDb } from '@/lib/firebase-admin';
+import bcrypt from 'bcryptjs';
 
-export async function GET() {
+export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authConfig);
     
@@ -12,29 +13,21 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    let profile;
+    const { currentPassword, newPassword } = await request.json();
 
-    // Firebase Admin yoksa mock data döndür
-    if (!adminDb) {
-      console.warn('⚠️ Firebase Admin not available, using mock profile data');
-      
-      profile = {
-        id: session.user.email,
-        name: session.user.name || 'Test User',
-        email: session.user.email,
-        phone: '+90 555 123 4567',
-        address: 'Test Address, Istanbul',
-        dateOfBirth: '1990-01-01',
-        avatar: session.user.image || '',
-        totalOrders: 5,
-        totalSpent: 250.75,
-        memberSince: '2024-01-01T00:00:00.000Z',
-      };
-
-      return NextResponse.json({ success: true, profile });
+    if (!currentPassword || !newPassword) {
+      return NextResponse.json({ error: 'Current and new passwords are required' }, { status: 400 });
     }
 
-    // Get user profile from Firestore
+    if (newPassword.length < 6) {
+      return NextResponse.json({ error: 'New password must be at least 6 characters' }, { status: 400 });
+    }
+
+    if (!adminDb) {
+      return NextResponse.json({ error: 'Database connection not available' }, { status: 503 });
+    }
+
+    // Get user from Firestore
     const userRef = adminDb.collection('users').doc(session.user.email);
     const userDoc = await userRef.get();
     
@@ -43,32 +36,25 @@ export async function GET() {
     }
 
     const userData = userDoc.data();
-    
-    // Get user orders for statistics
-    const ordersSnapshot = await adminDb.collection('orders')
-      .where('userEmail', '==', session.user.email)
-      .get();
-    
-    const orders = ordersSnapshot.docs.map(doc => doc.data());
-    const totalOrders = orders.length;
-    const totalSpent = orders.reduce((sum, order) => sum + (order.total || 0), 0);
 
-    profile = {
-      id: userDoc.id,
-      name: userData?.name || session.user.name || '',
-      email: session.user.email,
-      phone: userData?.phone || '',
-      address: userData?.address || '',
-      dateOfBirth: userData?.dateOfBirth || null,
-      avatar: userData?.avatar || session.user.image || '',
-      totalOrders,
-      totalSpent,
-      memberSince: userData?.createdAt || new Date().toISOString(),
-    };
+    // Verify current password
+    const isValidPassword = await bcrypt.compare(currentPassword, userData?.password || '');
+    if (!isValidPassword) {
+      return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 });
+    }
 
-    return NextResponse.json({ success: true, profile });
+    // Hash new password
+    const hashedNewPassword = await bcrypt.hash(newPassword, 12);
+
+    // Update password
+    await userRef.update({
+      password: hashedNewPassword,
+      updatedAt: new Date().toISOString(),
+    });
+
+    return NextResponse.json({ success: true, message: 'Password updated successfully' });
   } catch (error) {
-    console.error('Profile fetch error:', error);
+    console.error('Change password error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -167,15 +167,11 @@ export async function POST(request: NextRequest) {
       total: orderData.total
     });
 
-    // Handle case when Firebase Admin is not available
     if (!adminDb) {
-      console.log('⚠️ Firebase Admin not available - using mock order creation');
-      
-      return NextResponse.json<ApiResponse<Order>>({
-        success: true,
-        message: 'Sipariş başarıyla oluşturuldu (Test Mode)',
-        data: { id: orderId, ...orderData },
-      });
+      return NextResponse.json<ApiResponse>({
+        success: false,
+        error: 'Database connection not available',
+      }, { status: 503 });
     }
 
     console.log('🔥 Saving order to Firebase...');

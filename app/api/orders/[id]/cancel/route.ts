@@ -23,12 +23,10 @@ export async function POST(
     }
 
     if (!adminDb) {
-      console.log('⚠️ Firebase Admin not available - using mock cancel');
-      
       return NextResponse.json<ApiResponse>({
-        success: true,
-        message: 'Sipariş iptal edildi (Test Mode)',
-      });
+        success: false,
+        error: 'Veritabanı bağlantısı mevcut değil. Firebase yapılandırmasını kontrol edin.',
+      }, { status: 503 });
     }
 
     const orderId = params.id;

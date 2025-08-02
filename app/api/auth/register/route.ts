@@ -51,21 +51,10 @@ export async function POST(request: NextRequest) {
     console.log('🔗 AdminDb available:', !!adminDb);
 
     if (!adminDb) {
-      console.log('⚠️ Firebase Admin not available - using mock registration');
-      
-      // Firebase Admin yoksa mock başarılı response döndür
-      const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
       return NextResponse.json<ApiResponse>({
-        success: true,
-        message: 'Hesap başarıyla oluşturuldu (Mock Mode)',
-        data: {
-          uid: userId,
-          name,
-          email,
-          role: email === process.env.ADMIN_EMAIL ? 'admin' : 'user',
-        },
-      });
+        success: false,
+        error: 'Database connection not available',
+      }, { status: 503 });
     }
 
     // Firebase Admin varsa gerçek kayıt işlemi

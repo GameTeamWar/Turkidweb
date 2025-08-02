@@ -22,23 +22,10 @@ export async function GET(
     }
 
     if (!adminDb) {
-      // Mock data for testing
-      const mockCategory: Category = {
-        id: params.id,
-        name: 'Örnek Kategori',
-        slug: 'ornek-kategori',
-        icon: '🍔',
-        description: 'Bu bir örnek kategori açıklamasıdır.',
-        isActive: true,
-        sortOrder: 1,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      return NextResponse.json<ApiResponse<Category>>({
-        success: true,
-        data: mockCategory,
-      });
+      return NextResponse.json<ApiResponse>({
+        success: false,
+        error: 'Database connection not available',
+      }, { status: 503 });
     }
 
     const categoryDoc = await adminDb.collection('categories').doc(params.id).get();

@@ -1,7 +1,7 @@
 // components/admin/AdminHeader.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import { Bars3Icon, BellIcon } from '@heroicons/react/24/outline';
@@ -14,6 +14,15 @@ export function AdminHeader({ onMenuToggle }: AdminHeaderProps) {
   const { data: session } = useSession();
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   const handleSignOut = async () => {
     await signOut({ callbackUrl: '/' });
@@ -34,12 +43,12 @@ export function AdminHeader({ onMenuToggle }: AdminHeaderProps) {
           {/* Center - Current Time */}
           <div className="hidden lg:flex items-center text-white/80">
             <span className="text-sm">
-              {new Date().toLocaleDateString('tr-TR', { 
-                weekday: 'long', 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              })}
+              {currentTime.toLocaleDateString('tr-TR', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              })} • {currentTime.toLocaleTimeString('tr-TR')}
             </span>
           </div>
 

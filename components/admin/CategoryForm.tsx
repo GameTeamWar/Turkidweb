@@ -96,7 +96,8 @@ export function CategoryForm({ category, isEdit = false }: CategoryFormProps) {
       }
     } catch (error) {
       console.error('Category form error:', error);
-      toast.error('Bir hata oluştu');
+      const errorMessage = error instanceof Error ? error.message : 'Bir hata oluştu';
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

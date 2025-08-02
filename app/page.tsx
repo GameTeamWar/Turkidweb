@@ -98,32 +98,31 @@ export default function HomePage() {
     // Kategori filtresi - güncellenmiş mantık
     if (currentCategory === 'Populer') {
       // Popüler etiketine sahip ürünleri göster
-      const hasPopularTag = product.tags.includes('Populer') || 
-                           product.tags.includes('Popular') || 
-                           product.tags.includes('cok-satan');
+      const hasPopularTag = product.tags?.includes('Populer') || 
+                           product.tags?.includes('Popular') || 
+                           product.tags?.includes('cok-satan');
       if (!hasPopularTag) {
         return false;
       }
     } else {
-      // Seçili kategoriye ait ürünleri göster - hem categories array hem de category string kontrol et
-      const isInCategory = (product.categories && product.categories.includes(currentCategory)) ||
-                          (product.category === currentCategory);
+      // Seçili kategoriye ait ürünleri göster - categories array kontrol et
+      const isInCategory = product.categories && product.categories.includes(currentCategory);
       if (!isInCategory) {
         return false;
       }
     }
     
     // Diğer filtreler
-    if (filters.vegetarian && !product.tags.includes('Vejetaryen')) {
+    if (filters.vegetarian && !product.tags?.includes('Vejetaryen')) {
       return false;
     }
-    if (filters.spicy && !product.tags.includes('Acili')) {
+    if (filters.spicy && !product.tags?.includes('Acili')) {
       return false;
     }
-    if (filters.discount && product.discount === 0) {
+    if (filters.discount && (product.discount || 0) === 0) {
       return false;
     }
-    if (filters.popular && !product.tags.includes('Populer') && !product.tags.includes('Popular') && !product.tags.includes('cok-satan')) {
+    if (filters.popular && !product.tags?.includes('Populer') && !product.tags?.includes('Popular') && !product.tags?.includes('cok-satan')) {
       return false;
     }
     

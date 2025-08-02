@@ -20,8 +20,8 @@ export async function GET(request: NextRequest) {
     if (!adminDb) {
       return NextResponse.json<ApiResponse>({
         success: false,
-        error: 'Firebase Admin bağlantısı mevcut değil. Lütfen Firebase yapılandırmasını kontrol edin.',
-      }, { status: 500 });
+        error: 'Database connection not available',
+      }, { status: 503 });
     }
 
     const { searchParams } = new URL(request.url);

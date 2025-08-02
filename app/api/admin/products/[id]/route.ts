@@ -20,31 +20,6 @@ export async function GET(
       }, { status: 401 });
     }
 
-    if (!adminDb) {
-      // Firebase Admin yoksa örnek ürün döndür
-      const sampleProduct: Product = {
-        id: params.id,
-        name: 'Örnek Ürün',
-        description: 'Bu bir örnek ürün açıklamasıdır.',
-        price: 45.90,
-        originalPrice: 52.90,
-        image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop',
-        categories: ['et-burger', 'populer'],
-        discount: 13,
-        tags: ['populer'],
-        hasOptions: true,
-        options: [],
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      return NextResponse.json<ApiResponse<Product>>({
-        success: true,
-        data: sampleProduct,
-      });
-    }
-
     const productDoc = await adminDb.collection('products').doc(params.id).get();
     
     if (!productDoc.exists) {
@@ -90,13 +65,6 @@ export async function PUT(
         success: false,
         error: 'Yetkisiz erişim',
       }, { status: 401 });
-    }
-
-    if (!adminDb) {
-      return NextResponse.json<ApiResponse>({
-        success: false,
-        error: 'Veritabanı bağlantısı mevcut değil',
-      }, { status: 500 });
     }
 
     const body = await request.json();
@@ -247,13 +215,6 @@ export async function PATCH(
       }, { status: 401 });
     }
 
-    if (!adminDb) {
-      return NextResponse.json<ApiResponse>({
-        success: false,
-        error: 'Veritabanı bağlantısı mevcut değil',
-      }, { status: 500 });
-    }
-
     const body = await request.json();
     
     // Mevcut ürünü kontrol et
@@ -334,13 +295,6 @@ export async function DELETE(
       }, { status: 401 });
     }
 
-    if (!adminDb) {
-      return NextResponse.json<ApiResponse>({
-        success: false,
-        error: 'Veritabanı bağlantısı mevcut değil',
-      }, { status: 500 });
-    }
-
     // Ürünün var olup olmadığını kontrol et
     const productDoc = await adminDb.collection('products').doc(params.id).get();
     
@@ -352,24 +306,32 @@ export async function DELETE(
     }
 
     // Ürünün aktif siparişlerde kullanılıp kullanılmadığını kontrol et
-    const activeOrdersQuery = await adminDb
-      .collection('orders')
-      .where('status', 'in', ['pending', 'confirmed', 'preparing', 'ready'])
-      .get();
+    try {
+      const activeOrdersQuery = await adminDb
+        .collection('orders')
+        .where('status', 'in', ['pending', 'confirmed', 'preparing', 'ready'])
+        .get();
 
-    let hasActiveOrders = false;
-    activeOrdersQuery.docs.forEach(doc => {
-      const orderData = doc.data();
-      if (orderData.items && orderData.items.some((item: any) => item.id === params.id)) {
-        hasActiveOrders = true;
+      let hasActiveOrders = false;
+      activeOrdersQuery.docs.forEach(doc => {
+        const orderData = doc.data();
+        if (orderData.items && orderData.items.some((item: any) => item.id === params.id)) {
+          hasActiveOrders = true;
+        }
+      });
+
+      if (hasActiveOrders) {
+        return NextResponse.json<ApiResponse>({
+          success: false,
+          error: 'Bu ürün aktif siparişlerde kullanıldığı için silinemez. Ürünü pasif duruma getirebilirsiniz.',
+        }, { status: 400 });
       }
-    });
-
-    if (hasActiveOrders) {
+    } catch (error) {
+      console.error('Active orders check error:', error);
       return NextResponse.json<ApiResponse>({
         success: false,
-        error: 'Bu ürün aktif siparişlerde kullanıldığı için silinemez. Ürünü pasif duruma getirebilirsiniz.',
-      }, { status: 400 });
+        error: 'Aktif siparişler kontrol edilirken bir hata oluştu',
+      }, { status: 500 });
     }
 
     // Ürünü sil

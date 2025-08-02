@@ -379,11 +379,11 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                       <p className="text-white text-lg">
                         {typeof order.deliveryAddress === 'string' 
                           ? order.deliveryAddress 
-                          : order.deliveryAddress.address}
+                          : (order.deliveryAddress as any).address || order.deliveryAddress}
                       </p>
-                      {typeof order.deliveryAddress === 'object' && order.deliveryAddress.details && (
+                      {typeof order.deliveryAddress === 'object' && 'details' in order.deliveryAddress && order.deliveryAddress.details && (
                         <p className="text-white/70 mt-2">
-                          {order.deliveryAddress.details}
+                          {String(order.deliveryAddress.details)}
                         </p>
                       )}
                       {order.phone && (
@@ -401,7 +401,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                     </div>
                   </div>
                   
-                  {typeof order.deliveryAddress === 'object' && order.deliveryAddress.coordinates && (
+                  {typeof order.deliveryAddress === 'object' && 'coordinates' in order.deliveryAddress && order.deliveryAddress.coordinates && (
                     <div className="mt-4 pt-4 border-t border-white/20">
                       <button
                         onClick={() => {
@@ -458,7 +458,7 @@ export default function OrderDetailPage({ params }: OrderDetailPageProps) {
                       <span>-{order.discountAmount.toFixed(2)} ₺</span>
                     </div>
                     <div className="text-green-300 text-sm">
-                      🎉 Kod: {order.appliedCoupon.code}
+                      🎉 Kod: {typeof order.appliedCoupon === 'object' && order.appliedCoupon ? (order.appliedCoupon as any).code : 'Kupon uygulandı'}
                     </div>
                   </div>
                 )}

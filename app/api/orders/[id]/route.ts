@@ -23,46 +23,10 @@ export async function GET(
     }
 
     if (!adminDb) {
-      console.log('⚠️ Firebase Admin not available - using mock order');
-      
-      // Mock order for testing
-      const mockOrder: Order = {
-        id: params.id,
-        orderNumber: `ORD-${Date.now().toString().slice(-6)}`,
-        userId: session.user?.email || '',
-        userEmail: session.user?.email || '',
-        userName: session.user?.name || 'Test User',
-        items: [
-          {
-            id: 'product1',
-            name: 'Klasik Cheeseburger',
-            price: 45.90,
-            quantity: 1,
-            image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=300&fit=crop',
-            selectedOptions: {
-              spice: 'Baharatlı',
-              sauce: 'Ketçap'
-            }
-          }
-        ],
-        subtotal: 45.90,
-        tax: 3.67,
-        total: 49.57,
-        status: 'preparing',
-        paymentMethod: 'card',
-        paymentStatus: 'paid',
-        orderNote: 'Test sipariş notu',
-        deliveryAddress: 'Test teslimat adresi, Test Mahalle, Tarsus/Mersin',
-        phone: '+90 555 123 45 67',
-        estimatedDeliveryTime: new Date(Date.now() + 25 * 60 * 1000).toISOString(), // 25 dakika sonra
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      return NextResponse.json<ApiResponse<Order>>({
-        success: true,
-        data: mockOrder,
-      });
+      return NextResponse.json<ApiResponse>({
+        success: false,
+        error: 'Veritabanı bağlantısı mevcut değil. Firebase yapılandırmasını kontrol edin.',
+      }, { status: 503 });
     }
 
     const orderId = params.id;

@@ -22,25 +22,10 @@ export async function GET(
     }
 
     if (!adminDb) {
-      // Mock data for testing
-      const mockTag: Tag = {
-        id: params.id,
-        name: 'Örnek Etiket',
-        slug: 'ornek-etiket',
-        color: '#ef4444',
-        icon: '🏷️',
-        description: 'Bu bir örnek etiket açıklamasıdır.',
-        isActive: true,
-        sortOrder: 1,
-        usageCount: 5,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      return NextResponse.json<ApiResponse<Tag>>({
-        success: true,
-        data: mockTag,
-      });
+      return NextResponse.json<ApiResponse>({
+        success: false,
+        error: 'Database connection not available',
+      }, { status: 503 });
     }
 
     const tagDoc = await adminDb.collection('tags').doc(params.id).get();

@@ -22,25 +22,10 @@ export async function GET(
     }
 
     if (!adminDb) {
-      // Mock data for testing
-      const mockUser: User = {
-        id: params.id,
-        uid: params.id,
-        name: 'Örnek Kullanıcı',
-        email: 'ornek@test.com',
-        role: 'user',
-        provider: 'credentials',
-        isActive: true,
-        isBanned: false,
-        ipAddress: '192.168.1.100',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      return NextResponse.json<ApiResponse<User>>({
-        success: true,
-        data: mockUser,
-      });
+      return NextResponse.json<ApiResponse>({
+        success: false,
+        error: 'Database connection not available',
+      }, { status: 503 });
     }
 
     // Find user by ID (check multiple fields)

@@ -3,57 +3,36 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { toast } from 'react-hot-toast';
 import { Product } from '@/types';
 
+interface ProductWithOptions extends Product {
+  options?: Record<string, any>;
+}
+
 interface ProductCardProps {
-  product: Product;
-  onAddToCart: (product: Product, options?: Record<string, string>) => void;
+  product: ProductWithOptions;
+  onAddToCart: (product: ProductWithOptions, options?: Record<string, string>) => void;
 }
 
 export function ProductCard({ product, onAddToCart }: ProductCardProps) {
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
 
-  // Opsiyonları normalize etme ve başlatma
+  // Opsiyonları normalize etme - varsayılan seçim yapma
   useEffect(() => {
     if (!product) return;
 
-    const defaults: Record<string, string> = {};
-    
-    // Opsiyonları düzgün bir formata getirme
-    const normalizedOptions = normalizeOptions(product.options);
-    
-    normalizedOptions.forEach(option => {
-      if (option.values.length > 0) {
-        defaults[option.key] = option.values[0].value;
-      }
-    });
-
-    setSelectedOptions(defaults);
+    // Varsayılan seçim yapma - müşteri kendisi seçsin
+    setSelectedOptions({});
   }, [product]);
 
-  // Opsiyon verisini normalize eden yardımcı fonksiyon
+  // Opsiyon verisini normalize eden yardımcı fonksiyon - Düzeltilmiş versiyon
   const normalizeOptions = (options: any): Array<{
     key: string;
     name: string;
     values: Array<{ value: string; label: string }>
   }> => {
-    if (!options) return [];
-    
-    // Eğer zaten doğru formattaysa
-    if (Array.isArray(options) && options.every(opt => opt.name && opt.values)) {
-      return options.map(opt => ({
-        key: opt.name,
-        name: opt.label || opt.name,
-        values: opt.values.map(val => ({
-          value: val.value,
-          label: val.label || val.value
-        }))
-      }));
-    }
-
-    // Firebase'den gelen farklı formatlar için dönüşümler
     try {
-      // Format 1: { spice: ["mild", "medium"], sauce: ["ketchup", "mayo"] }
       if (typeof options === 'object' && !Array.isArray(options)) {
         return Object.entries(options).map(([key, values]) => ({
           key,
@@ -64,19 +43,8 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
           }))
         }));
       }
-
-      // Format 2: ["spice", "sauce"] gibi basit array
-      if (Array.isArray(options) && options.every(opt => typeof opt === 'string')) {
-        return options.map(opt => ({
-          key: opt,
-          name: opt.charAt(0).toUpperCase() + opt.slice(1),
-          values: [
-            { value: 'default', label: 'Default' }
-          ]
-        }));
-      }
     } catch (error) {
-      console.error('Error normalizing options:', error);
+      console.error('Option normalization error:', error);
     }
 
     return [];
@@ -85,15 +53,35 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
   const handleOptionChange = (optionKey: string, value: string) => {
     setSelectedOptions(prev => ({
       ...prev,
-      [optionKey]: value,
+      [optionKey]: value
     }));
   };
 
   const handleAddToCart = () => {
-    const normalizedOptions = normalizeOptions(product.options);
-    const hasOptions = normalizedOptions.length > 0;
+    const normalizedOptions = normalizeOptions(product.options || {});
     
-    onAddToCart(product, hasOptions ? selectedOptions : undefined);
+    if (normalizedOptions.length > 0) {
+      const missingOptions = normalizedOptions.filter(
+        option => !selectedOptions[option.key]
+      );
+
+      if (missingOptions.length > 0) {
+        const missingOptionNames = missingOptions.map(opt => opt.name).join(', ');
+        toast.error(`Lütfen şu seçenekleri yapın: ${missingOptionNames}`, {
+          duration: 4000,
+          style: {
+            background: 'linear-gradient(45deg, #ef4444, #dc2626)',
+            color: 'white',
+            fontWeight: 'bold'
+          }
+        });
+        return;
+      }
+    }
+
+    if (onAddToCart) {
+      onAddToCart(product, selectedOptions);
+    }
   };
 
   const renderOptions = () => {
@@ -135,8 +123,19 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
     );
   }
 
+  // Opsiyonları normalize et
+  const normalizedOptions = normalizeOptions(product.options || {});
+
+  // Debug için console log ekleyelim
+  useEffect(() => {
+    console.log('Product:', product.name);
+    console.log('Product options:', product.options || {});
+    console.log('Normalized options:', normalizedOptions);
+  }, [product, normalizedOptions]);
+
   return (
-    <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl overflow-hidden transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl">
+    <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:bg-white/15">
+      {/* Image and Discount Badge */}
       <div className="relative h-48 w-full">
         <Image
           src={product.image || '/default-product.png'}
@@ -152,33 +151,108 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
         )}
       </div>
       
-      <div className="p-5">
-        <h3 className="text-white text-lg font-semibold mb-2">
-          {product.name || "İsimsiz Ürün"}
-        </h3>
-        <p className="text-white/80 text-sm mb-4 line-clamp-2">
-          {product.description || "Açıklama yok"}
-        </p>
-        
+      {/* Content */}
+      <div className="p-4">
+        {/* Title and Description */}
+        <h3 className="text-white font-semibold text-lg mb-2 line-clamp-1">{product.name}</h3>
+        <p className="text-white/70 text-sm mb-4 line-clamp-2">{product.description}</p>
+
+        {/* Options - Opsiyonları göster */}
+        {renderOptions()}
+        {normalizedOptions.length > 0 && (
+          <div className="mb-4 space-y-3">
+            <h4 className="text-white/90 text-sm font-medium flex items-center gap-2">
+              <span>🍽️</span>
+              Seçenekler <span className="text-red-300 text-xs">*</span>
+            </h4>
+            {normalizedOptions.map((option) => (
+              <div key={option.key} className="space-y-2">
+                <label className="text-white/80 text-xs font-medium uppercase tracking-wide flex items-center gap-1">
+                  {option.name}
+                  <span className="text-red-300">*</span>
+                  {!selectedOptions[option.key] && (
+                    <span className="text-yellow-300 text-xs normal-case">(Seçiniz)</span>
+                  )}
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {option.values.map((value) => (
+                    <button
+                      key={value.value}
+                      onClick={() => handleOptionChange(option.key, value.value)}
+                      className={`px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 ${
+                        selectedOptions[option.key] === value.value
+                          ? 'bg-orange-500 text-white shadow-lg scale-105'
+                          : 'bg-white/20 text-white/80 hover:bg-white/30 border border-white/40'
+                      }`}
+                    >
+                      {value.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Selected Options Summary */}
+        {Object.keys(selectedOptions).length > 0 && (
+          <div className="mb-4 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
+            <div className="text-green-300 text-xs mb-2 flex items-center gap-1">
+              <span>✓</span>
+              Seçili Opsiyonlar:
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {Object.entries(selectedOptions).map(([key, value]) => (
+                <span
+                  key={key}
+                  className="bg-green-500/20 text-green-300 px-2 py-1 rounded text-xs"
+                >
+                  {normalizedOptions.find(opt => opt.key === key)?.name}: {
+                    normalizedOptions
+                      .find(opt => opt.key === key)
+                      ?.values.find(val => val.value === value)?.label || value
+                  }
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Price */}
         <div className="flex items-center gap-2 mb-4">
-          <span className="text-white text-xl font-bold">
-            {typeof product.price === 'number' ? product.price.toFixed(2) : '0.00'} ₺
-          </span>
-          {product.originalPrice && (
-            <span className="text-white/60 text-base line-through">
+          <span className="text-white font-bold text-xl">{product.price.toFixed(2)} ₺</span>
+          {product.originalPrice && product.originalPrice > product.price && (
+            <span className="text-white/60 line-through text-sm">
               {product.originalPrice.toFixed(2)} ₺
             </span>
           )}
         </div>
-        
-        {renderOptions()}
-        
+
+        {/* Add to Cart Button */}
         <button
           onClick={handleAddToCart}
-          className="w-full bg-white text-orange-500 py-3 px-4 rounded-lg font-semibold hover:bg-orange-500 hover:text-white transition-colors duration-300"
+          className={`w-full py-3 px-4 rounded-lg font-semibold transition-all duration-300 hover:-translate-y-0.5 flex items-center justify-center gap-2 ${
+            normalizedOptions.length > 0 && Object.keys(selectedOptions).length !== normalizedOptions.length
+              ? 'bg-gray-500 hover:bg-gray-600 text-white cursor-not-allowed'
+              : 'bg-orange-500 hover:bg-orange-600 text-white'
+          }`}
         >
-          Sepete Ekle
+          <span>🛒</span>
+          {normalizedOptions.length > 0 && Object.keys(selectedOptions).length !== normalizedOptions.length
+            ? 'Önce Seçenekleri Seçin'
+            : 'Sepete Ekle'
+          }
         </button>
+
+        {/* Missing Options Warning */}
+        {normalizedOptions.length > 0 && Object.keys(selectedOptions).length < normalizedOptions.length && (
+          <div className="mt-2 p-2 bg-yellow-500/20 border border-yellow-500/30 rounded-lg">
+            <div className="text-yellow-300 text-xs flex items-center gap-1">
+              <span>⚠️</span>
+              {normalizedOptions.length - Object.keys(selectedOptions).length} seçenek daha yapmalısınız
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

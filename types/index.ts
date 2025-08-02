@@ -1,4 +1,5 @@
 // types/index.ts - Updated with multi-category support
+import { ReactNode } from 'react';
 
 // Product option types from admin types
 export interface ProductOption {
@@ -24,21 +25,20 @@ export interface Product {
   description: string;
   price: number;
   originalPrice?: number;
-  image: string;
-  categories: string[]; // Artık array - birden çok kategori
-  category?: string; // Geriye uyumluluk için
   discount: number;
-  tags: string[];
-  hasOptions: boolean;
-  options: ProductOption[];
+  categories: string[]; // Array olarak güncelle
+  image: string;
+  tags?: string[];
+  hasOptions?: boolean;
+  selectedOptions?: string[]; // Seçili opsiyon ID'leri
   stock?: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
-export interface CartItem extends Product {
-  [x: string]: string;
+export interface CartItem extends Omit<Product, 'selectedOptions'> {
+  [x: string]: any;
   productId: string;
   quantity: number;
   selectedOptions?: Record<string, string>;
@@ -74,6 +74,7 @@ export interface User {
 }
 
 export interface Address {
+  street: ReactNode;
   id: string;
   title: string;
   fullAddress: string;
@@ -84,15 +85,10 @@ export interface Address {
 }
 
 export interface Order {
-  discountAmount: any;
-  appliedCoupon: any;
   discountAmount: number;
   appliedCoupon: boolean;
-  note: any;
-  note: ReactNode;
-  deliveryAddress: any;
-  deliveryAddress: any;
-  deliveryAddress: any;
+  note: string;
+  deliveryAddress: Address;
   id: string;
   orderNumber: string;
   userId: string;

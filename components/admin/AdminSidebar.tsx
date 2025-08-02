@@ -3,30 +3,24 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { 
-  HomeIcon,
-  ChartBarIcon,
-  ShoppingBagIcon,
-  ClipboardDocumentListIcon,
-  UserGroupIcon,
-  TagIcon,
-  TicketIcon,
-  XMarkIcon
-} from '@heroicons/react/24/outline';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 
 interface AdminSidebarProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-const navigation = [
-  { name: 'Dashboard', href: '/admin/dashboard', icon: HomeIcon },
-  { name: 'Analiz Raporu', href: '/admin/analytics', icon: ChartBarIcon },
-  { name: 'Ürün Yönetimi', href: '/admin/products', icon: ShoppingBagIcon },
-  { name: 'Kategori Yönetimi', href: '/admin/categories', icon: TagIcon },
-  { name: 'Sipariş Takibi', href: '/admin/orders', icon: ClipboardDocumentListIcon },
-  { name: 'Kullanıcı Yönetimi', href: '/admin/users', icon: UserGroupIcon },
-  { name: 'Kupon Yönetimi', href: '/admin/coupons', icon: TicketIcon },
+const menuItems = [
+  { name: 'Dashboard', href: '/admin', icon: '📊' },
+  { name: 'Siparişler', href: '/admin/orders', icon: '📋' },
+  { name: 'Ürünler', href: '/admin/products', icon: '🍔' },
+  { name: 'Kategoriler', href: '/admin/categories', icon: '📁' },
+  { name: 'Etiketler', href: '/admin/tags', icon: '🏷️' },
+  { name: 'Opsiyonlar', href: '/admin/options', icon: '⚙️' },
+  { name: 'Kuponlar', href: '/admin/coupons', icon: '🎫' },
+  { name: 'Müşteriler', href: '/admin/customers', icon: '👥' },
+  { name: 'Raporlar', href: '/admin/reports', icon: '📈' },
+  { name: 'Ayarlar', href: '/admin/settings', icon: '🔧' },
 ];
 
 export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
@@ -59,29 +53,24 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
         </div>
 
         <nav className="mt-6 px-3">
-          <div className="space-y-1">
-            {navigation.map((item) => {
-              const isActive = pathname === item.href;
-              const Icon = item.icon;
-              
-              return (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className={`
-                    flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors duration-200
-                    ${isActive 
-                      ? 'bg-orange-500/20 text-orange-300 border-r-2 border-orange-500' 
-                      : 'text-white/80 hover:text-white hover:bg-white/10'
-                    }
-                  `}
-                  onClick={() => onClose()}
-                >
-                  <Icon className="w-5 h-5" />
-                  {item.name}
-                </Link>
-              );
-            })}
+          <div className="space-y-2">
+            {menuItems.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`
+                  flex items-center gap-3 px-4 py-3 rounded-lg text-white transition-all duration-300 hover:bg-white/20
+                  ${pathname === item.href
+                    ? 'bg-orange-500/20 text-orange-300 border-l-4 border-orange-500'
+                    : 'hover:text-orange-300'
+                  }
+                `}
+                onClick={() => onClose()}
+              >
+                <span className="text-xl">{item.icon}</span>
+                <span className="font-medium">{item.name}</span>
+              </Link>
+            ))}
           </div>
         </nav>
 

@@ -22,8 +22,8 @@ export async function POST(
     if (!adminDb) {
       return NextResponse.json<ApiResponse>({
         success: false,
-        error: 'Veritabanı bağlantısı mevcut değil',
-      }, { status: 500 });
+        error: 'Database connection not available',
+      }, { status: 503 });
     }
 
     const body = await request.json();

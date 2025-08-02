@@ -752,17 +752,17 @@ export default function AdminOrdersPage() {
                       <MapPinIcon className="w-4 h-4" />
                       Teslimat Bilgileri
                     </h4>
-                    <p className="text-white text-sm">{order.deliveryAddress.address}</p>
-                    {order.deliveryAddress.details && (
-                      <p className="text-white/60 text-sm">Detay: {order.deliveryAddress.details}</p>
+                    <p className="text-white text-sm">{order.deliveryAddress.street}</p>
+                    {(order.deliveryAddress as any).details && (
+                      <p className="text-white/60 text-sm">Detay: {(order.deliveryAddress as any).details}</p>
                     )}
-                    {order.deliveryAddress.coordinates && (
+                    {(order.deliveryAddress as any).coordinates && (
                       <div className="flex items-center gap-2 mt-2">
                         <span className="text-white/60 text-xs">
-                          Konum: {order.deliveryAddress.coordinates.lat.toFixed(6)}, {order.deliveryAddress.coordinates.lng.toFixed(6)}
+                          Konum: {(order.deliveryAddress as any).coordinates.lat.toFixed(6)}, {(order.deliveryAddress as any).coordinates.lng.toFixed(6)}
                         </span>
                         <button
-                          onClick={() => window.open(`https://maps.google.com?q=${order.deliveryAddress.coordinates.lat},${order.deliveryAddress.coordinates.lng}`, '_blank')}
+                          onClick={() => window.open(`https://maps.google.com?q=${(order.deliveryAddress as any).coordinates.lat},${(order.deliveryAddress as any).coordinates.lng}`, '_blank')}
                           className="text-blue-300 hover:text-blue-200 text-xs underline"
                         >
                           Haritada Göster
@@ -784,8 +784,8 @@ export default function AdminOrdersPage() {
                     </span>
                     <span className="text-white/60 text-sm">
                       {formatDistanceToNow(
-                        (order.createdAt && typeof order.createdAt === 'object' && order.createdAt instanceof Date)
-                          ? order.createdAt
+                        (order.createdAt && typeof order.createdAt === 'object' && (order.createdAt as any) instanceof Date)
+                          ? order.createdAt as Date
                           : new Date(order.createdAt as unknown as string),
                         { addSuffix: true, locale: tr }
                       )}
