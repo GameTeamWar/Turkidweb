@@ -759,7 +759,7 @@ export default function AdminOrdersPage() {
                     {(order.deliveryAddress as any).coordinates && (
                       <div className="flex items-center gap-2 mt-2">
                         <span className="text-white/60 text-xs">
-                          Konum: {(order.deliveryAddress as any).coordinates.lat.toFixed(6)}, {(order.deliveryAddress as any).coordinates.lng.toFixed(6)}
+                          GPS Konum: {(order.deliveryAddress as any).coordinates.lat.toFixed(6)}, {(order.deliveryAddress as any).coordinates.lng.toFixed(6)}
                         </span>
                         <button
                           onClick={() => window.open(`https://maps.google.com?q=${(order.deliveryAddress as any).coordinates.lat},${(order.deliveryAddress as any).coordinates.lng}`, '_blank')}
@@ -770,7 +770,7 @@ export default function AdminOrdersPage() {
                       </div>
                     )}
                     {order.note && (
-                      <p className="text-yellow-300 text-sm mt-2">Not: {order.note}</p>
+                      <p className="text-yellow-300 text-sm mt-2">Sipariş Notu: {order.note}</p>
                     )}
                   </div>
                 )}

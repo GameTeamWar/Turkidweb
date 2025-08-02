@@ -72,8 +72,44 @@ export async function GET(request: NextRequest) {
           originalPrice: typeof data.originalPrice === 'number' ? data.originalPrice : undefined,
           discount: typeof data.discount === 'number' ? data.discount : 0,
           stock: typeof data.stock === 'number' ? data.stock : undefined,
+          // Options data
+          selectedOptions: data.selectedOptions || [],
+          optionsData: data.optionsData || []
         };
       }) as Product[];
+
+      // Global opsiyonları populate et - Firebase'den gerçek veriler
+      for (let product of products) {
+        if (product.selectedOptions && product.selectedOptions.length > 0) {
+          try {
+            console.log(`🔄 Populating options for product: ${product.name}`);
+            
+            const optionDocs = await Promise.all(
+              product.selectedOptions.map((optionId: string) => 
+                adminDb.collection('productOptions').doc(optionId).get()
+              )
+            );
+            
+            product.optionsData = optionDocs
+              .filter(doc => doc.exists)
+              .map(doc => ({ 
+                id: doc.id, 
+                ...doc.data(),
+                choices: doc.data()?.choices || []
+              }));
+              
+            console.log(`✅ Populated ${product.optionsData.length} options for ${product.name}`);
+            
+            // Debug: Log the actual option limits
+            product.optionsData.forEach(opt => {
+              console.log(`🔧 Admin Option: ${opt.name} - Min: ${opt.minSelect}, Max: ${opt.maxSelect}, Type: ${opt.type}`);
+            });
+          } catch (error) {
+            console.error('Error populating options for product:', product.id, error);
+            product.optionsData = [];
+          }
+        }
+      }
 
       // Kategori filtresi (client-side)
       if (category) {
@@ -136,48 +172,70 @@ export async function POST(request: NextRequest) {
       }, { status: 401 });
     }
 
-    if (!adminDb) {
-      return NextResponse.json<ApiResponse>({
-        success: false,
-        error: 'Database connection not available',
-      }, { status: 503 });
-    }
-
-    const data = await request.json();
+    const body = await request.json();
     
     // Validate required fields
-    if (!data.name || !data.description || !data.price || !data.categories || data.categories.length === 0) {
+    if (!body.name || !body.description || !body.price || !body.categories || body.categories.length === 0) {
       return NextResponse.json<ApiResponse>({
         success: false,
         error: 'Gerekli alanlar eksik',
       }, { status: 400 });
     }
 
-    const productId = `product_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    const newProduct: Omit<Product, 'id'> & { options?: any[] } = {
-      name: data.name.trim(),
-      description: data.description.trim(),
-      price: parseFloat(data.price.toString()),
-      originalPrice: data.originalPrice ? parseFloat(data.originalPrice.toString()) : undefined,
-      discount: data.discount || 0,
-      categories: data.categories,
-      image: data.image,
-      tags: data.tags || [],
-      hasOptions: data.hasOptions || false,
-      options: data.options || [],
-      stock: data.stock ? parseInt(data.stock.toString()) : undefined,
-      isActive: data.isActive !== undefined ? data.isActive : true,
+    // Global opsiyonları al ve doğrula
+    let optionsData = [];
+    if (body.selectedOptions && Array.isArray(body.selectedOptions) && body.selectedOptions.length > 0) {
+      console.log('🔄 Fetching selected options from Firebase:', body.selectedOptions);
+      
+      const optionDocs = await Promise.all(
+        body.selectedOptions.map((optionId: string) => 
+          adminDb.collection('productOptions').doc(optionId).get()
+        )
+      );
+      
+      optionsData = optionDocs
+        .filter(doc => doc.exists)
+        .map(doc => ({ 
+          id: doc.id, 
+          ...doc.data(),
+          choices: doc.data()?.choices || []
+        }));
+        
+      console.log(`✅ Fetched ${optionsData.length} options for product`);
+    }
+
+    const productData = {
+      name: body.name.trim(),
+      description: body.description.trim(),
+      price: parseFloat(body.price.toString()),
+      originalPrice: body.originalPrice ? parseFloat(body.originalPrice.toString()) : undefined,
+      image: body.image,
+      categories: body.categories || [],
+      category: body.categories?.[0] || '', // Geriye uyumluluk
+      tags: body.tags || [],
+      selectedOptions: body.selectedOptions || [], // Global opsiyon ID'leri
+      optionsData: optionsData, // Populate edilmiş opsiyon verileri
+      hasOptions: (body.selectedOptions || []).length > 0,
+      stock: body.stock ? parseInt(body.stock.toString()) : undefined,
+      isActive: body.isActive !== undefined ? body.isActive : true,
+      discount: body.discount || 0,
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     };
 
-    await adminDb.collection('products').doc(productId).set(newProduct);
+    const docRef = await adminDb.collection('products').add(productData);
+    
+    const newProduct = {
+      id: docRef.id,
+      ...productData,
+    } as Product;
 
     return NextResponse.json<ApiResponse<Product>>({
       success: true,
-      data: { id: productId, ...newProduct },
+      message: 'Ürün başarıyla eklendi',
+      data: newProduct,
     });
+
   } catch (error) {
     console.error('❌ Create product error:', error);
     return NextResponse.json<ApiResponse>({

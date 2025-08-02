@@ -41,8 +41,18 @@ export async function GET(request: NextRequest) {
 
     const snapshot = await buildQuery().get();
     console.log('📊 Query executed, docs found:', snapshot.docs.length);
+    
     let products = snapshot.docs.map(doc => {
       const data = doc.data();
+      console.log('🔍 Raw product data:', {
+        id: doc.id,
+        name: data.name,
+        hasOptionsData: !!data.optionsData,
+        optionsDataLength: data.optionsData?.length || 0,
+        hasSelectedOptions: !!data.selectedOptions,
+        selectedOptionsLength: data.selectedOptions?.length || 0
+      });
+      
       return {
         id: doc.id,
         ...data,
@@ -51,8 +61,48 @@ export async function GET(request: NextRequest) {
         category: data.category || (data.categories && data.categories[0] ? data.categories[0] : ''),
         tags: Array.isArray(data.tags) ? data.tags : [],
         options: Array.isArray(data.options) ? data.options : [],
+        // SADECE gerçek opsiyon verilerini kullan - test opsiyonları yok
+        optionsData: data.optionsData || [],
+        selectedOptions: data.selectedOptions || [],
+        hasOptions: (data.optionsData && data.optionsData.length > 0) || false
       };
     }) as (Product & { category: string })[];
+
+    console.log('🔍 Products loaded, checking real options...');
+
+    // Gerçek global opsiyonları populate et - Firebase'den
+    for (let product of products) {
+      if (product.selectedOptions && product.selectedOptions.length > 0) {
+        console.log(`🔄 Populating options for: ${product.name}`);
+        try {
+          const optionDocs = await Promise.all(
+            product.selectedOptions.map((optionId: string) => 
+              adminDb.collection('productOptions').doc(optionId).get()
+            )
+          );
+          
+          product.optionsData = optionDocs
+            .filter(doc => doc.exists)
+            .map(doc => ({ 
+              id: doc.id, 
+              ...doc.data(),
+              choices: doc.data()?.choices || []
+            }));
+            
+          console.log(`✅ Populated ${product.optionsData.length} options for ${product.name}`);
+          
+          // Debug: Log the actual option limits
+          product.optionsData.forEach(opt => {
+            console.log(`🔧 Option: ${opt.name} - Min: ${opt.minSelect}, Max: ${opt.maxSelect}, Type: ${opt.type}`);
+          });
+        } catch (error) {
+          console.error('Error populating options:', error);
+          product.optionsData = [];
+        }
+      }
+      
+      console.log(`📋 Product: ${product.name} - Has real options: ${product.hasOptions}, Options count: ${product.optionsData?.length || 0}`);
+    }
 
     console.log('🔍 Before filtering - products count:', products.length);
 

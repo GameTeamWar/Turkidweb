@@ -30,13 +30,40 @@ export async function GET(
     }
 
     const productData = productDoc.data();
+    
+    // Global opsiyonları populate et
+    let optionsData = [];
+    if (productData?.selectedOptions && Array.isArray(productData.selectedOptions)) {
+      console.log(`🔄 Populating options for product: ${productData.name}`);
+      
+      const optionDocs = await Promise.all(
+        productData.selectedOptions.map((optionId: string) => 
+          adminDb.collection('productOptions').doc(optionId).get()
+        )
+      );
+      
+      optionsData = optionDocs
+        .filter(doc => doc.exists)
+        .map(doc => ({ 
+          id: doc.id, 
+          ...doc.data(),
+          choices: doc.data()?.choices || []
+        }));
+        
+      console.log(`✅ Populated ${optionsData.length} options`);
+      
+      // Debug: Log the actual option limits
+      optionsData.forEach(opt => {
+        console.log(`🔧 Single Product Option: ${opt.name} - Min: ${opt.minSelect}, Max: ${opt.maxSelect}, Type: ${opt.type}`);
+      });
+    }
+    
     const product = {
       id: productDoc.id,
       ...productData,
-      // Eski category alanını categories array'ine çevir
+      optionsData: optionsData,
       categories: productData?.categories || (productData?.category ? [productData.category] : []),
       tags: Array.isArray(productData?.tags) ? productData.tags : [],
-      options: Array.isArray(productData?.options) ? productData.options : [],
     } as Product;
 
     return NextResponse.json<ApiResponse<Product>>({
@@ -81,10 +108,27 @@ export async function PUT(
 
     const currentData = productDoc.data();
 
+    // Global opsiyonları güncelle
+    let optionsData = [];
+    if (body.selectedOptions && Array.isArray(body.selectedOptions)) {
+      const optionDocs = await Promise.all(
+        body.selectedOptions.map((optionId: string) => 
+          adminDb.collection('productOptions').doc(optionId).get()
+        )
+      );
+      
+      optionsData = optionDocs
+        .filter(doc => doc.exists)
+        .map(doc => ({ id: doc.id, ...doc.data() }));
+    }
+
     // Güncellenecek alanları hazırla
     const updateData: any = {
       ...body,
       updatedAt: new Date().toISOString(),
+      selectedOptions: body.selectedOptions || [],
+      optionsData: optionsData,
+      hasOptions: (body.selectedOptions || []).length > 0,
     };
 
     // Eğer ad değiştiriliyorsa, aynı isimde başka ürün var mı kontrol et
@@ -168,22 +212,40 @@ export async function PUT(
       updateData.tags = Array.isArray(body.tags) ? body.tags : [];
     }
 
-    // Options array olduğunu garanti et
-    if (body.options !== undefined) {
-      updateData.options = Array.isArray(body.options) ? body.options : [];
-    }
-
     await adminDb.collection('products').doc(params.id).update(updateData);
 
     // Güncellenmiş ürünü getir
     const updatedDoc = await adminDb.collection('products').doc(params.id).get();
     const updatedData = updatedDoc.data();
+    
+    // Güncellenmiş opsiyonları populate et
+    let updatedOptionsData = [];
+    if (updatedData?.selectedOptions && Array.isArray(updatedData.selectedOptions)) {
+      console.log(`🔄 Re-populating options after update`);
+      
+      const optionDocs = await Promise.all(
+        updatedData.selectedOptions.map((optionId: string) => 
+          adminDb.collection('productOptions').doc(optionId).get()
+        )
+      );
+      
+      updatedOptionsData = optionDocs
+        .filter(doc => doc.exists)
+        .map(doc => ({ 
+          id: doc.id, 
+          ...doc.data(),
+          choices: doc.data()?.choices || []
+        }));
+        
+      console.log(`✅ Re-populated ${updatedOptionsData.length} options`);
+    }
+    
     const updatedProduct = {
       id: updatedDoc.id,
       ...updatedData,
+      optionsData: updatedOptionsData,
       categories: updatedData?.categories || (updatedData?.category ? [updatedData.category] : []),
       tags: Array.isArray(updatedData?.tags) ? updatedData.tags : [],
-      options: Array.isArray(updatedData?.options) ? updatedData.options : [],
     } as Product;
 
     return NextResponse.json<ApiResponse<Product>>({

@@ -326,6 +326,18 @@ export default function OptionsPage() {
         </div>
       )}
 
+      {/* Debug Section - Remove in production */}
+      <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 mb-6">
+        <h3 className="text-blue-300 font-medium mb-2">🔧 Debug Bilgileri</h3>
+        <div className="text-blue-200 text-sm space-y-1">
+          <div>Toplam opsiyon: {options.length}</div>
+          <div>Aktif opsiyon: {options.filter(o => o.isActive).length}</div>
+          <div>Filtrelenmiş opsiyon: {filteredOptions.length}</div>
+          <div>Arama terimi: "{search}"</div>
+          <div>Filtreler: {JSON.stringify(filters)}</div>
+        </div>
+      </div>
+
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6">

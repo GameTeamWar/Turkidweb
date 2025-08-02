@@ -75,18 +75,39 @@ export default function HomePage() {
   const fetchProducts = async () => {
     try {
       setLoading(true);
+      console.log('🚀 Starting to fetch products for category:', currentCategory);
+      
       const response = await fetch(`/api/products?category=${currentCategory}&active=true`);
       const result = await response.json();
       
+      console.log('📦 API Response:', {
+        success: result.success,
+        dataLength: result.data?.length || 0,
+        category: currentCategory
+      });
+      
       if (result.success) {
         console.log('📦 Fetched products:', result.data);
-        console.log('🔍 Current category:', currentCategory);
+        
+        // İlk 3 ürünün opsiyon bilgilerini detaylı göster
+        result.data?.slice(0, 3).forEach((product: any, index: number) => {
+          console.log(`🔍 Product ${index + 1} options detail:`, {
+            name: product.name,
+            hasOptionsData: !!product.optionsData,
+            optionsDataCount: product.optionsData?.length || 0,
+            optionsData: product.optionsData,
+            hasSelectedOptions: !!product.selectedOptions,
+            selectedOptions: product.selectedOptions
+          });
+        });
+        
         setProducts(result.data);
       } else {
+        console.error('❌ API Error:', result.error);
         toast.error('Ürünler yüklenirken hata oluştu');
       }
     } catch (error) {
-      console.error('Fetch products error:', error);
+      console.error('❌ Fetch products error:', error);
       toast.error('Ürünler yüklenirken hata oluştu');
     } finally {
       setLoading(false);

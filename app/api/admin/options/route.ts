@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authConfig } from '@/lib/auth';
+import { adminDb } from '@/lib/firebase-admin';
 
 export interface ProductOption {
   id: string;
@@ -24,43 +25,6 @@ export interface ProductOptionChoice {
   sortOrder: number;
 }
 
-// Mock data storage - replace with your database implementation
-let options: ProductOption[] = [
-  {
-    id: '1',
-    name: 'Baharat Seçimi',
-    type: 'radio',
-    isRequired: true,
-    minSelect: 1,
-    maxSelect: 1,
-    sortOrder: 1,
-    isActive: true,
-    choices: [
-      { id: '1', name: 'Baharatlı', price: 0, isActive: true, sortOrder: 1 },
-      { id: '2', name: 'Baharatsız', price: 0, isActive: true, sortOrder: 2 }
-    ],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  },
-  {
-    id: '2',
-    name: 'Sos Seçimi',
-    type: 'checkbox',
-    isRequired: false,
-    minSelect: 0,
-    maxSelect: 3,
-    sortOrder: 2,
-    isActive: true,
-    choices: [
-      { id: '3', name: 'Ketçap', price: 0, isActive: true, sortOrder: 1 },
-      { id: '4', name: 'Mayonez', price: 0, isActive: true, sortOrder: 2 },
-      { id: '5', name: 'Barbekü Sos', price: 2, isActive: true, sortOrder: 3 }
-    ],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  }
-];
-
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authConfig);
@@ -69,48 +33,62 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Yetkisiz erişim' }, { status: 401 });
     }
 
+    if (!adminDb) {
+      return NextResponse.json({
+        success: false,
+        error: 'Firebase Admin bağlantısı mevcut değil',
+      }, { status: 500 });
+    }
+
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
     const isActive = searchParams.get('isActive');
     const sortBy = searchParams.get('sortBy') || 'sortOrder';
     const sortOrder = searchParams.get('sortOrder') || 'asc';
 
-    let filteredOptions = [...options];
+    console.log('🔍 Options API called with params:', { search, isActive, sortBy, sortOrder });
 
-    // Search filter
+    let query: any = adminDb.collection('productOptions');
+
+    // Only filter by isActive if specifically requested
+    if (isActive !== null && isActive !== '' && isActive !== undefined) {
+      query = query.where('isActive', '==', isActive === 'true');
+      console.log('📝 Added isActive filter:', isActive === 'true');
+    }
+
+    query = query.orderBy(sortBy, sortOrder);
+
+    const snapshot = await query.get();
+    
+    console.log(`📊 Found ${snapshot.docs.length} options in database`);
+    
+    let options = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        choices: data.choices || [],
+        createdAt: data.createdAt || new Date().toISOString(),
+        updatedAt: data.updatedAt || new Date().toISOString()
+      };
+    }) as ProductOption[];
+
+    // Apply client-side search filter
     if (search) {
-      filteredOptions = filteredOptions.filter(option =>
+      options = options.filter(option =>
         option.name.toLowerCase().includes(search.toLowerCase())
       );
+      console.log(`🔍 After search filter: ${options.length} options`);
     }
 
-    // Active filter
-    if (isActive !== null) {
-      filteredOptions = filteredOptions.filter(option =>
-        option.isActive === (isActive === 'true')
-      );
-    }
-
-    // Sort
-    filteredOptions.sort((a, b) => {
-      let aValue = a[sortBy as keyof ProductOption];
-      let bValue = b[sortBy as keyof ProductOption];
-      
-      if (typeof aValue === 'string') aValue = aValue.toLowerCase();
-      if (typeof bValue === 'string') bValue = bValue.toLowerCase();
-      
-      if (sortOrder === 'desc') {
-        return aValue > bValue ? -1 : 1;
-      }
-      return aValue < bValue ? -1 : 1;
-    });
+    console.log(`✅ Returning ${options.length} options to client`);
 
     return NextResponse.json({
       success: true,
-      data: filteredOptions
+      data: options
     });
   } catch (error) {
-    console.error('Options fetch error:', error);
+    console.error('❌ Options fetch error:', error);
     return NextResponse.json(
       { success: false, error: 'Opsiyonlar yüklenirken hata oluştu' },
       { status: 500 }
@@ -126,27 +104,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Yetkisiz erişim' }, { status: 401 });
     }
 
+    if (!adminDb) {
+      return NextResponse.json({
+        success: false,
+        error: 'Firebase Admin bağlantısı mevcut değil',
+      }, { status: 500 });
+    }
+
     const data = await request.json();
     
-    const newOption: ProductOption = {
-      id: Date.now().toString(),
+    const newOption = {
       name: data.name,
       type: data.type,
       isRequired: data.isRequired,
       minSelect: data.minSelect,
       maxSelect: data.maxSelect,
-      sortOrder: data.sortOrder || options.length + 1,
+      sortOrder: data.sortOrder || 1,
       isActive: data.isActive !== undefined ? data.isActive : true,
       choices: data.choices || [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
 
-    options.push(newOption);
+    const docRef = await adminDb.collection('productOptions').add(newOption);
 
     return NextResponse.json({
       success: true,
-      data: newOption
+      data: { id: docRef.id, ...newOption }
     });
   } catch (error) {
     console.error('Option create error:', error);

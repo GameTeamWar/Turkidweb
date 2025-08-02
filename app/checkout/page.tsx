@@ -56,9 +56,7 @@ export default function CheckoutPage() {
     setValue,
     watch,
   } = useForm<CheckoutFormData>({
-    defaultValues: {
-      paymentMethod: 'card',
-    },
+    // Otomatik ödeme yöntemi seçimi kaldırıldı
   });
 
   const subtotal = getTotalPrice();
@@ -74,9 +72,16 @@ export default function CheckoutPage() {
         
         let address = '';
         if (response.results && response.results[0]) {
-          address = response.results[0].formatted_address;
+          // Sadece ana adresi al (sokak, mahalle, ilçe)
+          const addressComponents = response.results[0].address_components;
+          const streetNumber = addressComponents.find(c => c.types.includes('street_number'))?.long_name || '';
+          const route = addressComponents.find(c => c.types.includes('route'))?.long_name || '';
+          const neighborhood = addressComponents.find(c => c.types.includes('sublocality_level_1'))?.long_name || '';
+          const district = addressComponents.find(c => c.types.includes('administrative_area_level_2'))?.long_name || '';
+          
+          address = [streetNumber, route, neighborhood, district].filter(Boolean).join(', ');
         } else {
-          address = `${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`;
+          address = `Seçilen konum (${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)})`;
         }
 
         const locationData: LocationData = {
@@ -86,24 +91,26 @@ export default function CheckoutPage() {
         };
 
         setLocation(locationData);
-        setValue('fullAddress', address);
+        // Sadece genel konum bilgisini set et, kullanıcı detayları ayrıca girecek
+        setValue('fullAddress', '');
       }
     } catch (error) {
       console.error('Geocoding error:', error);
       const locationData: LocationData = {
         lat: coords.lat,
         lng: coords.lng,
-        address: `Konum: ${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`
+        address: `Seçilen konum (${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)})`
       };
 
       setLocation(locationData);
-      setValue('fullAddress', locationData.address || '');
+      setValue('fullAddress', '');
     }
   }, [setValue]);
 
   // Initialize map
   const initializeMap = useCallback(() => {
     if (!mapContainerRef.current || !window.google?.maps) {
+      console.log('Map container or Google Maps not ready');
       return;
     }
 
@@ -161,6 +168,7 @@ export default function CheckoutPage() {
     } catch (error) {
       console.error('Error initializing map:', error);
       toast.error('Harita yüklenirken hata oluştu');
+      setMapLoaded(true); // Hata durumunda da yüklendi olarak işaretle
     }
   }, [updateLocation]);
 
@@ -208,6 +216,11 @@ export default function CheckoutPage() {
       return;
     }
 
+    if (!data.fullAddress.trim()) {
+      toast.error('Lütfen teslimat adresini detaylı olarak girin!');
+      return;
+    }
+
     try {
       setIsSubmitting(true);
 
@@ -220,7 +233,10 @@ export default function CheckoutPage() {
         paymentMethod: data.paymentMethod,
         orderNote: data.orderNote || '',
         deliveryAddress: {
+          // Kullanıcının girdiği detaylı adres
           address: data.fullAddress,
+          // Haritadan alınan genel konum bilgisi
+          generalLocation: location.address,
           coordinates: {
             lat: location.lat,
             lng: location.lng
@@ -273,14 +289,21 @@ export default function CheckoutPage() {
   return (
     <>
       <Script
-        src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places&language=tr`}
+        src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places&language=tr&region=TR`}
         strategy="afterInteractive"
         onLoad={() => {
-          initializeMap();
+          console.log('Google Maps script loaded successfully');
+          setTimeout(() => {
+            initializeMap();
+          }, 100);
         }}
         onError={(e) => {
           console.error('Google Maps script failed to load:', e);
-          toast.error('Harita yüklenemedi');
+          toast.error('Harita servisi yüklenemedi. Lütfen sayfayı yenileyin.');
+          setMapLoaded(true);
+        }}
+        onReady={() => {
+          console.log('Google Maps script ready');
         }}
       />
       
@@ -317,7 +340,7 @@ export default function CheckoutPage() {
                   <div className="relative">
                     <div 
                       ref={mapContainerRef}
-                      className="w-full h-80 rounded-lg overflow-hidden bg-gray-200"
+                      className="w-full h-80 rounded-lg overflow-hidden bg-gray-200 border-2 border-dashed border-gray-300"
                       style={{ minHeight: '320px' }}
                     />
                     {!mapLoaded && (
@@ -325,6 +348,30 @@ export default function CheckoutPage() {
                         <div className="text-center">
                           <div className="w-12 h-12 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto mb-4"></div>
                           <p className="text-white/70">Harita yükleniyor...</p>
+                          <p className="text-white/50 text-sm mt-2">
+                            Sorun yaşıyorsanız sayfayı yenileyin
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                    {mapLoaded && !window.google?.maps && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-red-500/10 backdrop-blur-sm rounded-lg border border-red-500/30">
+                        <div className="text-center p-6">
+                          <div className="text-red-400 text-4xl mb-4">⚠️</div>
+                          <p className="text-red-300 font-medium mb-2">Harita yüklenemedi</p>
+                          <p className="text-red-200 text-sm mb-4">
+                            Google Maps servisi şu anda kullanılamıyor
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMapLoaded(false);
+                              window.location.reload();
+                            }}
+                            className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-300"
+                          >
+                            Sayfayı Yenile
+                          </button>
                         </div>
                       </div>
                     )}
@@ -336,9 +383,10 @@ export default function CheckoutPage() {
                       <div className="flex items-start gap-3">
                         <MapPinIcon className="w-5 h-5 text-green-400 mt-0.5" />
                         <div className="flex-1">
+                          <p className="text-green-200 text-sm font-medium">Seçilen Konum</p>
                           <p className="text-green-200 text-sm">{location.address}</p>
                           <p className="text-green-200/70 text-xs mt-1">
-                            {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
+                            GPS: {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
                           </p>
                         </div>
                       </div>
@@ -349,7 +397,8 @@ export default function CheckoutPage() {
                     <button
                       type="button"
                       onClick={() => getCurrentLocation()}
-                      className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg font-medium transition-all duration-300 flex items-center justify-center gap-2"
+                      disabled={!mapLoaded || !window.google?.maps}
+                      className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-lg font-medium transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <MapPinIcon className="w-4 h-4" />
                       Konumumu Bul
@@ -365,22 +414,33 @@ export default function CheckoutPage() {
                     )}
                   </div>
                   
-                  <p className="text-white/70 text-sm">
-                    📍 Harita üzerinde işaretçiyi sürükleyerek veya tıklayarak teslimat konumunu seçebilirsiniz.
-                  </p>
+                  <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3">
+                    <p className="text-blue-200 text-sm">
+                      📍 <strong>Konum seçme seçenekleri:</strong>
+                    </p>
+                    <ul className="text-blue-200/80 text-sm mt-2 space-y-1">
+                      <li>• "Konumumu Bul" ile otomatik konum tespiti</li>
+                      <li>• Harita üzerinde tıklayarak manuel konum seçimi</li>
+                      <li>• İşaretçiyi sürükleyerek konum düzeltme</li>
+                      <li>• Manuel adres girişi (harita olmadan da sipariş verilebilir)</li>
+                    </ul>
+                  </div>
                 </div>
               </div>
 
               {/* Payment Method */}
               <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6">
-                <h3 className="text-white text-xl font-semibold mb-6">Ödeme Yöntemi</h3>
+                <h3 className="text-white text-xl font-semibold mb-6">
+                  Ödeme Yöntemi
+                  <span className="text-red-400 text-sm ml-2">* (Seçiniz)</span>
+                </h3>
                 
                 <div className="space-y-4">
-                  <label className="flex items-center gap-3 p-4 bg-white/10 rounded-lg cursor-pointer hover:bg-white/20 transition-colors duration-300">
+                  <label className="flex items-center gap-3 p-4 bg-white/10 rounded-lg cursor-pointer hover:bg-white/20 transition-colors duration-300 border border-transparent has-[:checked]:border-orange-500/50 has-[:checked]:bg-orange-500/10">
                     <input 
                       type="radio" 
                       value="card" 
-                      {...register('paymentMethod')}
+                      {...register('paymentMethod', { required: 'Lütfen bir ödeme yöntemi seçin' })}
                       className="w-5 h-5 text-orange-500" 
                     />
                     <div className="flex-1">
@@ -390,11 +450,11 @@ export default function CheckoutPage() {
                     <span className="text-2xl">💳</span>
                   </label>
                   
-                  <label className="flex items-center gap-3 p-4 bg-white/10 rounded-lg cursor-pointer hover:bg-white/20 transition-colors duration-300">
+                  <label className="flex items-center gap-3 p-4 bg-white/10 rounded-lg cursor-pointer hover:bg-white/20 transition-colors duration-300 border border-transparent has-[:checked]:border-orange-500/50 has-[:checked]:bg-orange-500/10">
                     <input 
                       type="radio" 
                       value="cash" 
-                      {...register('paymentMethod')}
+                      {...register('paymentMethod', { required: 'Lütfen bir ödeme yöntemi seçin' })}
                       className="w-5 h-5 text-orange-500" 
                     />
                     <div className="flex-1">
@@ -404,11 +464,11 @@ export default function CheckoutPage() {
                     <span className="text-2xl">💵</span>
                   </label>
                   
-                  <label className="flex items-center gap-3 p-4 bg-white/10 rounded-lg cursor-pointer hover:bg-white/20 transition-colors duration-300">
+                  <label className="flex items-center gap-3 p-4 bg-white/10 rounded-lg cursor-pointer hover:bg-white/20 transition-colors duration-300 border border-transparent has-[:checked]:border-orange-500/50 has-[:checked]:bg-orange-500/10">
                     <input 
                       type="radio" 
                       value="online" 
-                      {...register('paymentMethod')}
+                      {...register('paymentMethod', { required: 'Lütfen bir ödeme yöntemi seçin' })}
                       className="w-5 h-5 text-orange-500" 
                     />
                     <div className="flex-1">
@@ -418,6 +478,10 @@ export default function CheckoutPage() {
                     <span className="text-2xl">📱</span>
                   </label>
                 </div>
+                
+                {errors.paymentMethod && (
+                  <p className="text-red-300 text-sm mt-2">{errors.paymentMethod.message}</p>
+                )}
               </div>
 
               {/* Delivery Information */}
@@ -427,7 +491,7 @@ export default function CheckoutPage() {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-white text-sm font-medium mb-2">
-                      Telefon Numarası
+                      Telefon Numarası *
                     </label>
                     <input
                       type="tel"
@@ -448,34 +512,37 @@ export default function CheckoutPage() {
 
                   <div>
                     <label className="block text-white text-sm font-medium mb-2">
-                      Adres Detayı
+                      Teslimat Adresi *
                     </label>
                     <textarea
                       {...register('fullAddress', {
-                        required: 'Adres gerekli',
+                        required: 'Teslimat adresi gerekli',
                         minLength: {
                           value: 10,
                           message: 'Adres en az 10 karakter olmalıdır',
                         },
                       })}
-                      rows={3}
+                      rows={4}
                       className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-white/60 focus:outline-none focus:border-white/50 resize-none"
-                      placeholder="Bina no, daire no, sokak adı vb. detayları girin..."
+                      placeholder="Sokak adı, bina numarası, daire numarası, mahalle bilgilerini detaylı olarak yazın..."
                     />
                     {errors.fullAddress && (
                       <p className="text-red-300 text-sm mt-1">{errors.fullAddress.message}</p>
                     )}
+                    <p className="text-white/60 text-xs mt-1">
+                      Örnek: Atatürk Mahallesi, 123. Sokak, No:45, Daire:7, Merkez/Tarsus
+                    </p>
                   </div>
 
                   <div>
                     <label className="block text-white text-sm font-medium mb-2">
-                      Ek Açıklama (Opsiyonel)
+                      Adres Tarifi (Opsiyonel)
                     </label>
                     <input
                       type="text"
                       {...register('addressDetails')}
                       className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-white/60 focus:outline-none focus:border-white/50"
-                      placeholder="Kapıcıya söyleyin, 2. kat vb."
+                      placeholder="Kapıcıya söyleyin, 2. kat, yeşil kapı vb. tarif bilgileri"
                     />
                   </div>
                 </div>
@@ -556,10 +623,12 @@ export default function CheckoutPage() {
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  disabled={isSubmitting || !location}
+                  disabled={isSubmitting || !watch('fullAddress')?.trim()}
                   className="w-full bg-green-500 hover:bg-green-600 text-white py-4 px-6 rounded-lg font-semibold transition-all duration-300 hover:-translate-y-0.5 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isSubmitting ? 'Sipariş Veriliyor...' : !location ? 'Önce Konum Seçin' : 'Siparişi Tamamla'}
+                  {isSubmitting ? 'Sipariş Veriliyor...' : 
+                   !watch('fullAddress')?.trim() ? 'Önce Teslimat Adresini Girin' : 
+                   'Siparişi Tamamla'}
                 </button>
                 
                 <div className="mt-4 text-center">

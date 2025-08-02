@@ -18,7 +18,7 @@ export default function AddOptionPage() {
         <div>
           <h1 className="text-3xl font-bold text-white">Yeni Opsiyon Ekle</h1>
           <p className="text-white/70 mt-1">
-            Ürünler için yeni seçenek grubu oluşturun
+            Ürünler için yeni opsiyon oluşturun
           </p>
         </div>
       </div>

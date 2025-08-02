@@ -1,19 +1,23 @@
-// components/admin/ProductForm.tsx - Updated Tag System
+// components/admin/ProductForm.tsx - Güncellenmiş Tag ve Opsiyon Sistemi
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import Image from 'next/image';
 import toast from 'react-hot-toast';
 import { Category, ProductOption, ProductChoice } from '@/types/admin';
 import { Tag } from '@/app/api/admin/tags/route';
+import { ProductOption as GlobalProductOption } from '@/app/api/admin/options/route';
 import { 
   PlusIcon, 
   TrashIcon, 
   PencilIcon,
   PhotoIcon,
-  XMarkIcon
+  XMarkIcon,
+  CheckCircleIcon,
+  Cog6ToothIcon
 } from '@heroicons/react/24/outline';
 
 interface ProductFormData {
@@ -21,13 +25,13 @@ interface ProductFormData {
   description: string;
   price: number;
   originalPrice?: number;
-  categories: string[]; // Artık array
+  categories: string[];
   image: string;
   tags: string[];
   hasOptions: boolean;
   stock?: number;
   isActive: boolean;
-  options: ProductOption[];
+  selectedOptions: string[]; // Global opsiyon ID'leri
 }
 
 interface ProductFormProps {
@@ -40,12 +44,37 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(initialData?.categories || initialData?.category ? [initialData.category] : []);
+  const [availableOptions, setAvailableOptions] = useState<GlobalProductOption[]>([]);
+  // Kategori seçimini kalıcı tut - initialData'dan al ve localStorage'a kaydet
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(() => {
+    // İlk olarak initialData'dan kontrol et
+    if (initialData?.categories && initialData.categories.length > 0) {
+      return initialData.categories;
+    }
+    // Sonra localStorage'dan kontrol et (sadece yeni ürün eklerken)
+    if (!productId && typeof window !== 'undefined') {
+      const saved = localStorage.getItem('lastSelectedCategories');
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch {
+          return [];
+        }
+      }
+    }
+    return initialData?.category ? [initialData.category] : [];
+  });
+  
   const [selectedTags, setSelectedTags] = useState<string[]>(initialData?.tags || []);
   const [imagePreview, setImagePreview] = useState<string>(initialData?.image || '');
   const [options, setOptions] = useState<ProductOption[]>(initialData?.options || []);
   const [editingOption, setEditingOption] = useState<ProductOption | null>(null);
   const [showOptionModal, setShowOptionModal] = useState(false);
+  const [selectedOptionIds, setSelectedOptionIds] = useState<string[]>(
+    initialData?.selectedOptions || 
+    initialData?.optionsData?.map((opt: any) => opt.id) || 
+    []
+  );
 
   const {
     register,
@@ -60,7 +89,7 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
       description: initialData?.description || '',
       price: initialData?.price || 0,
       originalPrice: initialData?.originalPrice || undefined,
-      categories: initialData?.categories || initialData?.category ? [initialData.category] : [],
+      categories: selectedCategories, // Kalıcı kategori seçimini kullan
       image: initialData?.image || '',
       tags: initialData?.tags || [],
       hasOptions: initialData?.hasOptions || false,
@@ -83,6 +112,7 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
   useEffect(() => {
     fetchCategories();
     fetchTags();
+    fetchAvailableOptions();
     
     // Image preview güncelle
     if (watchImage && watchImage !== imagePreview) {
@@ -116,6 +146,31 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
     }
   };
 
+  const fetchAvailableOptions = async () => {
+    try {
+      console.log('🔍 Fetching available options...');
+      const response = await fetch('/api/admin/options');
+      const result = await response.json();
+      
+      console.log('📦 Available options response:', result);
+      
+      if (result.success && result.data) {
+        // Filter only active options
+        const activeOptions = result.data.filter((option: any) => option.isActive);
+        setAvailableOptions(activeOptions);
+        console.log(`✅ Loaded ${activeOptions.length} active options out of ${result.data.length} total`);
+      } else {
+        console.error('❌ Failed to fetch options:', result.error);
+        setAvailableOptions([]);
+      }
+    } catch (error) {
+      console.error('❌ Available options fetch error:', error);
+      setAvailableOptions([]);
+      toast.error('Opsiyonlar yüklenirken hata oluştu');
+    }
+  };
+
+  // Kategori seçimi kalıcı olsun
   const handleCategoryToggle = (categorySlug: string) => {
     const newCategories = selectedCategories.includes(categorySlug)
       ? selectedCategories.filter(c => c !== categorySlug)
@@ -123,6 +178,11 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
     
     setSelectedCategories(newCategories);
     setValue('categories', newCategories);
+    
+    // Kategori seçimini localStorage'a kaydet (sadece yeni ürün eklerken)
+    if (!productId && typeof window !== 'undefined') {
+      localStorage.setItem('lastSelectedCategories', JSON.stringify(newCategories));
+    }
   };
 
   const handleTagToggle = (tagSlug: string) => {
@@ -134,66 +194,13 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
     setValue('tags', newTags);
   };
 
-  // Opsiyon ekleme/düzenleme
-  const handleAddOption = () => {
-    setEditingOption({
-      id: `option_${Date.now()}`,
-      name: '',
-      minSelect: 1,
-      maxSelect: 1,
-      choices: []
-    });
-    setShowOptionModal(true);
-  };
-
-  const handleEditOption = (option: ProductOption) => {
-    setEditingOption({ ...option });
-    setShowOptionModal(true);
-  };
-
-  const handleDeleteOption = (optionId: string) => {
-    if (confirm('Bu opsiyonu silmek istediğinizden emin misiniz?')) {
-      setOptions(options.filter(opt => opt.id !== optionId));
-    }
-  };
-
-  const handleSaveOption = (option: ProductOption) => {
-    if (!option.name.trim()) {
-      toast.error('Opsiyon adı gerekli');
-      return;
-    }
-
-    if (option.choices.length === 0) {
-      toast.error('En az bir seçenek eklemelisiniz');
-      return;
-    }
-
-    if (option.minSelect > option.choices.length) {
-      toast.error('Minimum seçim sayısı, seçenek sayısından fazla olamaz');
-      return;
-    }
-
-    if (option.maxSelect > option.choices.length) {
-      toast.error('Maksimum seçim sayısı, seçenek sayısından fazla olamaz');
-      return;
-    }
-
-    if (option.minSelect > option.maxSelect) {
-      toast.error('Minimum seçim, maksimum seçimden fazla olamaz');
-      return;
-    }
-
-    const existingIndex = options.findIndex(opt => opt.id === option.id);
-    if (existingIndex >= 0) {
-      const newOptions = [...options];
-      newOptions[existingIndex] = option;
-      setOptions(newOptions);
-    } else {
-      setOptions([...options, option]);
-    }
-
-    setShowOptionModal(false);
-    setEditingOption(null);
+  const handleOptionToggle = (optionId: string) => {
+    const newSelectedOptions = selectedOptionIds.includes(optionId)
+      ? selectedOptionIds.filter(id => id !== optionId)
+      : [...selectedOptionIds, optionId];
+    
+    setSelectedOptionIds(newSelectedOptions);
+    setValue('selectedOptions', newSelectedOptions);
   };
 
   const onSubmit = async (data: ProductFormData) => {
@@ -206,10 +213,11 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
         price: parseFloat(data.price.toString()),
         originalPrice: data.originalPrice ? parseFloat(data.originalPrice.toString()) : undefined,
         stock: data.stock ? parseInt(data.stock.toString()) : undefined,
-        categories: selectedCategories,
+        categories: selectedCategories, // Kalıcı kategori seçimini kullan
         tags: selectedTags,
         discount: discount,
-        options: watchHasOptions ? options : []
+        selectedOptions: selectedOptionIds, // Seçili opsiyon ID'leri
+        hasOptions: selectedOptionIds.length > 0 // Otomatik hesapla
       };
 
       const url = productId 
@@ -249,6 +257,12 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
 
       if (result.success) {
         toast.success(productId ? 'Ürün güncellendi!' : 'Ürün eklendi!');
+        
+        // Başarılı ekleme sonrası kategorileri temizleme - kullanıcı tercihine bırak
+        // if (!productId && typeof window !== 'undefined') {
+        //   localStorage.removeItem('lastSelectedCategories');
+        // }
+        
         router.push('/admin/products');
       } else {
         toast.error(result.error || 'Bir hata oluştu');
@@ -343,6 +357,15 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
                       </div>
                     ) : null;
                   })}
+                </div>
+              )}
+              {/* Kategori kalıcılığı bilgi notu */}
+              {!productId && (
+                <div className="mt-2 p-2 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                  <div className="text-blue-300 text-xs flex items-center gap-2">
+                    <span>💡</span>
+                    Seçtiğiniz kategoriler bir sonraki ürün eklerken hatırlanacak
+                  </div>
                 </div>
               )}
             </div>
@@ -541,68 +564,140 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
             )}
           </div>
 
-          {/* Ürün Seçenekleri */}
+          {/* Ürün Seçenekleri - YENİ SİSTEM */}
           <div>
             <div className="flex items-center justify-between mb-4">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  {...register('hasOptions')}
-                  className="w-4 h-4 text-orange-500 bg-white/20 border-white/30 rounded focus:ring-orange-500"
-                />
-                <span className="ml-2 text-white text-sm">
-                  Bu ürünün seçenekleri var
-                </span>
-              </label>
-              
-              {watchHasOptions && (
-                <button
-                  type="button"
-                  onClick={handleAddOption}
-                  className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-300 flex items-center gap-2"
-                >
-                  <PlusIcon className="w-4 h-4" />
-                  Opsiyon Ekle
-                </button>
-              )}
+              <div>
+                <h3 className="text-white text-lg font-semibold mb-2">Ürün Seçenekleri</h3>
+                <p className="text-white/60 text-sm">
+                  Hazır opsiyonlardan seçim yapın. Yeni opsiyon eklemek için{' '}
+                  <Link href="/admin/options" className="text-orange-400 hover:text-orange-300 underline">
+                    Opsiyon Yönetimi
+                  </Link>{' '}
+                  sayfasını kullanın.
+                </p>
+              </div>
+              <div className="text-white/60 text-sm">
+                {availableOptions.length} opsiyon mevcut
+              </div>
+            </div>
+
+            {/* Debug Info - Remove in production */}
+            <div className="mb-4 p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
+              <div className="text-blue-300 text-sm">
+                🔧 Debug: {availableOptions.length} opsiyon yüklendi
+              </div>
             </div>
 
             {/* Mevcut Opsiyonlar */}
-            {watchHasOptions && options.length > 0 && (
-              <div className="space-y-3">
-                {options.map(option => (
+            {availableOptions.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {availableOptions.map(option => (
                   <div key={option.id} className="bg-white/10 border border-white/20 rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-white font-medium">{option.name}</h4>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => handleEditOption(option)}
-                          className="text-blue-400 hover:text-blue-300 transition-colors"
-                        >
-                          <PencilIcon className="w-4 h-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteOption(option.id)}
-                          className="text-red-400 hover:text-red-300 transition-colors"
-                        >
-                          <TrashIcon className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="text-white/70 text-sm mb-2">
-                      Min: {option.minSelect} | Max: {option.maxSelect}
-                    </div>
-                    <div className="space-y-1">
-                      {option.choices.map(choice => (
-                        <div key={choice.id} className="text-white/80 text-sm">
-                          • {choice.name} {choice.price ? `(+₺${choice.price})` : ''}
+                    <label className="flex items-start gap-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selectedOptionIds.includes(option.id)}
+                        onChange={() => handleOptionToggle(option.id)}
+                        className="w-4 h-4 text-orange-500 bg-white/20 border-white/30 rounded focus:ring-orange-500 mt-1"
+                      />
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="text-white font-medium">{option.name}</h4>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-1 rounded-full text-xs ${
+                              option.type === 'radio' ? 'bg-blue-500/20 text-blue-300' :
+                              option.type === 'checkbox' ? 'bg-green-500/20 text-green-300' :
+                              'bg-purple-500/20 text-purple-300'
+                            }`}>
+                              {option.type === 'radio' ? 'Tek Seçim' :
+                               option.type === 'checkbox' ? 'Çoklu Seçim' : 'Açılır Liste'}
+                            </span>
+                            {option.isRequired && (
+                              <span className="px-2 py-1 rounded-full text-xs bg-red-500/20 text-red-300">
+                                Zorunlu
+                              </span>
+                            )}
+                          </div>
                         </div>
-                      ))}
-                    </div>
+                        
+                        <div className="text-white/70 text-sm mb-2">
+                          Min: {option.minSelect} | Max: {option.maxSelect}
+                        </div>
+                        
+                        <div className="space-y-1">
+                          {option.choices && option.choices.slice(0, 3).map((choice: any) => (
+                            <div key={choice.id} className="text-white/60 text-sm flex justify-between">
+                              <span>• {choice.name}</span>
+                              {choice.price > 0 && (
+                                <span className="text-green-400">+₺{choice.price}</span>
+                              )}
+                            </div>
+                          ))}
+                          {option.choices && option.choices.length > 3 && (
+                            <div className="text-white/50 text-xs">
+                              +{option.choices.length - 3} seçenek daha...
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </label>
                   </div>
                 ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 bg-white/5 rounded-lg border-2 border-dashed border-white/20">
+                <div className="text-white/60 mb-4">
+                  <Cog6ToothIcon className="w-12 h-12 mx-auto mb-2" />
+                  Aktif opsiyon bulunamadı
+                </div>
+                <p className="text-white/60 mb-4">
+                  Opsiyon yönetimi sayfasından opsiyon oluşturun ve aktif duruma getirin.
+                </p>
+                <div className="space-y-2">
+                  <Link
+                    href="/admin/options/add"
+                    className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-300 inline-flex items-center gap-2"
+                  >
+                    <PlusIcon className="w-4 h-4" />
+                    Yeni Opsiyon Oluştur
+                  </Link>
+                  <div className="text-white/60 text-sm">
+                    veya mevcut opsiyonları aktif duruma getirin
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Seçili Opsiyonlar Özeti */}
+            {selectedOptionIds.length > 0 && (
+              <div className="mt-6 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+                <h4 className="text-green-300 font-medium mb-3 flex items-center gap-2">
+                  <CheckCircleIcon className="w-5 h-5" />
+                  Seçili Opsiyonlar ({selectedOptionIds.length})
+                </h4>
+                <div className="space-y-2">
+                  {selectedOptionIds.map(optionId => {
+                    const option = availableOptions.find(opt => opt.id === optionId);
+                    return option ? (
+                      <div key={optionId} className="flex items-center justify-between bg-white/10 rounded-lg p-3">
+                        <div>
+                          <span className="text-white font-medium">{option.name}</span>
+                          <span className="text-white/60 ml-2 text-sm">
+                            ({option.choices.length} seçenek)
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleOptionToggle(optionId)}
+                          className="text-red-400 hover:text-red-300 transition-colors"
+                        >
+                          <XMarkIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : null;
+                  })}
+                </div>
               </div>
             )}
           </div>
@@ -655,181 +750,37 @@ export function ProductForm({ productId, initialData }: ProductFormProps) {
                   setSelectedTags([]);
                   setImagePreview('');
                   setOptions([]);
+                  setSelectedOptionIds([]);
+                  // Kategori seçimini de temizle
+                  if (typeof window !== 'undefined') {
+                    localStorage.removeItem('lastSelectedCategories');
+                  }
                 }}
                 className="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300"
               >
                 Temizle
               </button>
             )}
-          </div>
-        </form>
-      </div>
 
-      {/* Opsiyon Modal */}
-      {showOptionModal && editingOption && (
-        <OptionModal
-          option={editingOption}
-          onSave={handleSaveOption}
-          onClose={() => {
-            setShowOptionModal(false);
-            setEditingOption(null);
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-// Opsiyon Modal Bileşeni
-interface OptionModalProps {
-  option: ProductOption;
-  onSave: (option: ProductOption) => void;
-  onClose: () => void;
-}
-
-function OptionModal({ option, onSave, onClose }: OptionModalProps) {
-  const [currentOption, setCurrentOption] = useState<ProductOption>({ ...option });
-  const [newChoice, setNewChoice] = useState({ name: '', price: 0 });
-
-  const handleAddChoice = () => {
-    if (!newChoice.name.trim()) {
-      toast.error('Seçenek adı gerekli');
-      return;
-    }
-
-    const choice: ProductChoice = {
-      id: `choice_${Date.now()}`,
-      name: newChoice.name.trim(),
-      price: newChoice.price > 0 ? newChoice.price : undefined
-    };
-
-    setCurrentOption({
-      ...currentOption,
-      choices: [...currentOption.choices, choice]
-    });
-
-    setNewChoice({ name: '', price: 0 });
-  };
-
-  const handleDeleteChoice = (choiceId: string) => {
-    setCurrentOption({
-      ...currentOption,
-      choices: currentOption.choices.filter(c => c.id !== choiceId)
-    });
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-      <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-xl p-6 w-full max-w-md max-h-[80vh] overflow-y-auto">
-        <h3 className="text-xl font-bold text-white mb-4">Opsiyon Düzenle</h3>
-
-        <div className="mb-4">
-          <label className="block text-white text-sm font-medium mb-2">
-            Opsiyon Adı *
-          </label>
-          <input
-            type="text"
-            value={currentOption.name}
-            onChange={(e) => setCurrentOption({ ...currentOption, name: e.target.value })}
-            className="w-full px-3 py-2 bg-white/20 border border-white/30 rounded-lg text-white placeholder-white/60 focus:outline-none focus:border-white/50"
-            placeholder="Örn: Baharat Seçimi"
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div>
-            <label className="block text-white text-sm font-medium mb-2">
-              Min Seçim *
-            </label>
-            <input
-              type="number"
-              min="0"
-              value={currentOption.minSelect}
-              onChange={(e) => setCurrentOption({ ...currentOption, minSelect: parseInt(e.target.value) || 0 })}
-              className="w-full px-3 py-2 bg-white/20 border border-white/30 rounded-lg text-white focus:outline-none focus:border-white/50"
-            />
-          </div>
-          <div>
-            <label className="block text-white text-sm font-medium mb-2">
-              Max Seçim *
-            </label>
-            <input
-              type="number"
-              min="1"
-              value={currentOption.maxSelect}
-              onChange={(e) => setCurrentOption({ ...currentOption, maxSelect: parseInt(e.target.value) || 1 })}
-              className="w-full px-3 py-2 bg-white/20 border border-white/30 rounded-lg text-white focus:outline-none focus:border-white/50"
-            />
-          </div>
-        </div>
-
-        <div className="mb-4">
-          <label className="block text-white text-sm font-medium mb-2">
-            Seçenekler
-          </label>
-          
-          <div className="space-y-2 mb-3 max-h-32 overflow-y-auto">
-            {currentOption.choices.map(choice => (
-              <div key={choice.id} className="flex items-center justify-between bg-white/10 rounded-lg p-2">
-                <span className="text-white text-sm">
-                  {choice.name} {choice.price ? `(+₺${choice.price})` : ''}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteChoice(choice.id)}
-                  className="text-red-400 hover:text-red-300 transition-colors"
-                >
-                  <TrashIcon className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-
-          <div className="space-y-2">
-            <input
-              type="text"
-              placeholder="Seçenek adı"
-              value={newChoice.name}
-              onChange={(e) => setNewChoice({ ...newChoice, name: e.target.value })}
-              className="w-full px-3 py-2 bg-white/20 border border-white/30 rounded-lg text-white placeholder-white/60 focus:outline-none focus:border-white/50"
-            />
-            <div className="flex gap-2">
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="Ek ücret (₺)"
-                value={newChoice.price}
-                onChange={(e) => setNewChoice({ ...newChoice, price: parseFloat(e.target.value) || 0 })}
-                className="flex-1 px-3 py-2 bg-white/20 border border-white/30 rounded-lg text-white placeholder-white/60 focus:outline-none focus:border-white/50"
-              />
+            {/* Kategori kalıcılığını temizleme butonu */}
+            {!productId && selectedCategories.length > 0 && (
               <button
                 type="button"
-                onClick={handleAddChoice}
-                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors duration-300"
+                onClick={() => {
+                  setSelectedCategories([]);
+                  setValue('categories', []);
+                  if (typeof window !== 'undefined') {
+                    localStorage.removeItem('lastSelectedCategories');
+                  }
+                  toast.success('Kategori seçimleri temizlendi');
+                }}
+                className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300"
               >
-                <PlusIcon className="w-4 h-4" />
+                Kategorileri Temizle
               </button>
-            </div>
+            )}
           </div>
-        </div>
-
-        <div className="flex items-center gap-3 pt-4 border-t border-white/20">
-          <button
-            type="button"
-            onClick={() => onSave(currentOption)}
-            className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-300"
-          >
-            Kaydet
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 bg-white/20 hover:bg-white/30 text-white py-2 px-4 rounded-lg font-medium transition-colors duration-300"
-          >
-            İptal
-          </button>
-        </div>
+        </form>
       </div>
     </div>
   );

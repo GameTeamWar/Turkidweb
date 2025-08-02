@@ -18,7 +18,8 @@ import {
   UserIcon,
   MagnifyingGlassIcon,
   FunnelIcon,
-  ArrowPathIcon
+  ArrowPathIcon,
+  MapPinIcon
 } from '@heroicons/react/24/outline';
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -516,6 +517,37 @@ export default function AdminOrdersPage() {
                       </Link>
                     </div>
                   </div>
+
+                  {/* Delivery Address */}
+                  {order.deliveryAddress && (
+                    <div className="mt-4 p-3 bg-white/10 rounded-lg">
+                      <div className="flex items-start gap-2">
+                        <MapPinIcon className="w-4 h-4 text-blue-300 mt-0.5" />
+                        <div className="flex-1">
+                          <span className="text-blue-300 text-sm font-medium">Teslimat Adresi: </span>
+                          <span className="text-white text-sm">{order.deliveryAddress.address}</span>
+                          {order.deliveryAddress.details && (
+                            <div className="text-white/70 text-xs mt-1">
+                              Detay: {order.deliveryAddress.details}
+                            </div>
+                          )}
+                          {order.deliveryAddress.coordinates && (
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-white/60 text-xs">
+                                Konum: {order.deliveryAddress.coordinates.lat.toFixed(6)}, {order.deliveryAddress.coordinates.lng.toFixed(6)}
+                              </span>
+                              <button
+                                onClick={() => window.open(`https://maps.google.com?q=${order.deliveryAddress.coordinates.lat},${order.deliveryAddress.coordinates.lng}`, '_blank')}
+                                className="text-blue-300 hover:text-blue-200 text-xs underline"
+                              >
+                                Haritada Göster
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Notes */}
                   {(order.orderNote || order.adminNote) && (

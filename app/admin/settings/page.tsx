@@ -376,13 +376,14 @@ export default function AdminSettingsPage() {
 
                 <div>
                   <label className="block text-white text-sm font-medium mb-2">
-                    Adres
+                    Restoran Adresi
                   </label>
                   <textarea
                     value={settings.address}
                     onChange={(e) => setSettings(prev => ({ ...prev, address: e.target.value }))}
-                    rows={3}
+                    rows={4}
                     className="w-full px-4 py-3 bg-white/20 border border-white/30 rounded-lg text-white placeholder-white/60 focus:outline-none focus:border-white/50 resize-none"
+                    placeholder="Tam adresinizi girin (Sokak, Mahalle, İlçe, İl)"
                   />
                 </div>
               </div>

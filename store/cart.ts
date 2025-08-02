@@ -10,26 +10,53 @@ export const useCartStore = create<CartStore>()(
       appliedCoupon: null, // Yeni alan
 
       addItem: (product: Product, options?: Record<string, string>) => {
-        const cartKey = `${product.id}-${JSON.stringify(options || {})}`;
+        const optionsKey = options ? JSON.stringify(options) : '';
+        const itemId = `${product.id}_${optionsKey}`;
+        
+        // Toplam opsiyon fiyatını hesapla
+        let optionsPrice = 0;
+        if (options && product.optionsData) {
+          Object.entries(options).forEach(([optionName, choiceNames]) => {
+            const option = product.optionsData.find(opt => opt.name === optionName);
+            if (option) {
+              // Çoklu seçim kontrolü
+              if (option.type === 'checkbox' && choiceNames.includes(',')) {
+                const selectedChoiceNames = choiceNames.split(', ');
+                selectedChoiceNames.forEach(choiceName => {
+                  const choice = option.choices.find(c => c.name === choiceName);
+                  if (choice) optionsPrice += choice.price;
+                });
+              } else {
+                // Tek seçim
+                const choice = option.choices.find(c => c.name === choiceNames);
+                if (choice) optionsPrice += choice.price;
+              }
+            }
+          });
+        }
+        
+        const totalPrice = product.price + optionsPrice;
         
         set((state) => {
-          const existingItem = state.items.find(item => item.cartKey === cartKey);
+          const existingItem = state.items.find(item => item.id === itemId);
           
           if (existingItem) {
             return {
               items: state.items.map(item =>
-                item.cartKey === cartKey
-                  ? { ...item, quantity: Number(item.quantity) + 1 }
+                item.id === itemId
+                  ? { ...item, quantity: item.quantity + 1, totalPrice: (item.quantity + 1) * totalPrice }
                   : item
               ),
             };
           } else {
             const newItem: CartItem = {
-              ...product,
+              id: itemId,
+              name: product.name,
+              price: totalPrice, // Opsiyonlar dahil fiyat
+              image: product.image,
               quantity: 1,
               selectedOptions: options,
-              cartKey,
-              productId: ''
+              totalPrice: totalPrice,
             };
             
             return {
